@@ -1,0 +1,52 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+bin/
+lib/
+
+# Large Model Files (TFLite, ONNX, etc.)
+*.tflite
+*.onnx
+*.pb
+*.h5
+
+# Mediapipe / Task files
+*.task
+
+# Metadata and Logs
+*.prototxt
+events.out.tfevents.*
+
+# Datasets
+data/
+datasets/
+*.csv
+*.jsonl
+
+# Results and Exports
+results/
+output/
+reports/
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Secrets
+.env
+keys.json
+credentials.json
