@@ -9,7 +9,18 @@ from schemas import UserProfile, SyllabusOutline, CriticReview
 
 # Initialize the standard Google GenAI client
 # Ensure your GEMINI_API_KEY environment variable is set
-client = genai.Client()
+from dotenv import load_dotenv, dotenv_values
+load_dotenv()
+
+project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
+use_vertex = os.getenv("GOOGLE_GENAI_USE_VERTEXAI")
+location = os.getenv("GOOGLE_CLOUD_LOCATION")
+
+client = genai.Client(
+    vertexai=use_vertex,
+    project=project_id, # Put your actual project ID here
+    location=location     # Or whichever region your project uses
+)
 
 # ==========================================
 # Tool Definition (File I/O for Long-Term Memory)

@@ -1,0 +1,46 @@
+{
+  "units": [
+    {
+      "unit_order": 1,
+      "title": "Introduction to Time Series Data and Characteristics",
+      "module_type": "CONCEPT_LECTURE",
+      "learning_objective": "Define time series data, distinguish its unique characteristics from other data types, and identify common applications in various fields."
+    },
+    {
+      "unit_order": 2,
+      "title": "Time Series Components and Basic Visualizations",
+      "module_type": "CONCEPT_LECTURE",
+      "learning_objective": "Identify and conceptually understand the main components of a time series (trend, seasonality, cyclical, irregular), and describe how to visualize these components using basic R plotting functions."
+    },
+    {
+      "unit_order": 3,
+      "title": "Stationarity, Autocorrelation, and Pre-processing",
+      "module_type": "CONCEPT_LECTURE",
+      "learning_objective": "Explain the concept of stationarity and its importance in time series modeling, interpret Autocorrelation Function (ACF) and Partial Autocorrelation Function (PACF) plots, and describe methods for achieving stationarity."
+    },
+    {
+      "unit_order": 4,
+      "title": "Introduction to Exponential Smoothing Methods",
+      "module_type": "CONCEPT_LECTURE",
+      "learning_objective": "Understand the theoretical basis and application of simple forecasting methods, including Naive, Simple Moving Average, and various Exponential Smoothing models (Simple, Holt, Holt-Winters)."
+    },
+    {
+      "unit_order": 5,
+      "title": "ARIMA Models: AutoRegressive (AR) and Moving Average (MA) Concepts",
+      "module_type": "CONCEPT_LECTURE",
+      "learning_objective": "Explain the theoretical principles behind Autoregressive (AR) processes and Moving Average (MA) processes, and understand how their parameters influence time series behavior."
+    },
+    {
+      "unit_order": 6,
+      "title": "ARIMA Models: Integrated (I) Component and Model Identification",
+      "module_type": "CONCEPT_LECTURE",
+      "learning_objective": "Describe the role of differencing (Integrated component) in achieving stationarity for ARIMA models, and outline the conceptual steps for identifying appropriate p, d, and q orders using ACF/PACF plots."
+    },
+    {
+      "unit_order": 7,
+      "title": "Time Series Model Evaluation and Forecasting Principles",
+      "module_type": "CONCEPT_LECTURE",
+      "learning_objective": "Understand key metrics for evaluating time series model performance and forecast accuracy (e.g., RMSE, MAE, AIC, BIC), and describe best practices for generating and interpreting forecasts."
+    }
+  ]
+}
