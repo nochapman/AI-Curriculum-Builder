@@ -11,6 +11,8 @@ from .prompts import (
     CONTENT_GENERATOR_INSTRUCTION,
     CURRICULUM_DIRECTOR_INSTRUCTION,
     CURRICULUM_WRITER_INSTRUCTION,
+    INTERVIEW_TRANSCRIPT_INSTRUCTION,
+    INTERVIEWER_INSTRUCTION,
     MODULE_CRITIC_INSTRUCTION,
     ROOT_AGENT_INSTRUCTION,
     USER_PROFILE_EXTRACTOR_INSTRUCTION,
@@ -19,11 +21,19 @@ from .schemas import CurriculumBundle
 
 MODEL = os.getenv("CURRICULUM_MODEL", os.getenv("MODEL", "gemini-2.5-flash"))
 
+interview_transcript_agent = LlmAgent(
+    name="interview_transcript_agent",
+    model=MODEL,
+    description="Builds a concise intake transcript from the learner interview.",
+    instruction=INTERVIEW_TRANSCRIPT_INSTRUCTION,
+    output_key="interview_transcript",
+)
+
 
 profile_extractor_agent = LlmAgent(
     name="profile_extractor_agent",
     model=MODEL,
-    description="Extracts a structured learner profile from the conversation.",
+    description="Extracts a structured learner profile from the intake transcript.",
     instruction=USER_PROFILE_EXTRACTOR_INSTRUCTION,
     output_key="user_profile_json",
 )
@@ -68,10 +78,11 @@ module_critic_agent = LlmAgent(
 )
 
 
-curriculum_builder_agent = SequentialAgent(
-    name="curriculum_builder_agent",
-    description="Runs the curriculum builder pipeline from profile extraction through final review.",
+curriculum_generation_agent = SequentialAgent(
+    name="curriculum_generation_agent",
+    description="Runs the curriculum pipeline after the interview is complete.",
     sub_agents=[
+        interview_transcript_agent,
         profile_extractor_agent,
         curriculum_director_agent,
         content_generator_agent,
@@ -81,10 +92,19 @@ curriculum_builder_agent = SequentialAgent(
 )
 
 
+interviewer_agent = Agent(
+    name="interviewer_agent",
+    model=MODEL,
+    description="Interviews the learner, then hands off to curriculum generation.",
+    instruction=INTERVIEWER_INSTRUCTION,
+    sub_agents=[curriculum_generation_agent],
+)
+
+
 root_agent = Agent(
     name="root_agent",
     model=MODEL,
-    description="An agentic tutor that interviews learners, plans curricula, researches lessons, and saves modules.",
+    description="Routes learners into the intake interview and curriculum workflow.",
     instruction=ROOT_AGENT_INSTRUCTION,
-    sub_agents=[curriculum_builder_agent],
+    sub_agents=[interviewer_agent],
 )
