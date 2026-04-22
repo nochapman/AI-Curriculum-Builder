@@ -33,6 +33,8 @@ datasets/
 results/
 output/
 reports/
+long_term_memory/
+tt/long_term_memory/
 
 # VS Code
 .vscode/
