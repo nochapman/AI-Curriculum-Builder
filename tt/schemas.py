@@ -63,3 +63,39 @@ class CurriculumBundle(BaseModel):
     files: List[CurriculumFile] = Field(
         description="All files that should be written to long-term memory."
     )
+
+
+class QuizQuestion(BaseModel):
+    question: str = Field(description="Question shown to the learner.")
+    options: List[str] = Field(
+        min_length=2,
+        max_length=5,
+        description="Answer choices shown to the learner.",
+    )
+    correct_option_index: int = Field(
+        ge=0,
+        description="Zero-based index of the correct option.",
+    )
+    explanation: str = Field(
+        description="Brief explanation shown after the learner checks answers."
+    )
+
+
+class UnitQuiz(BaseModel):
+    unit_title: str = Field(description="Title of the unit being assessed.")
+    source_file: str = Field(description="Source markdown filename for this unit.")
+    questions: List[QuizQuestion] = Field(
+        min_length=3,
+        description="Questions for this unit.",
+    )
+
+
+class QuizBundle(BaseModel):
+    source_session_dir: str = Field(
+        description="Curriculum session directory used to build the quiz."
+    )
+    quiz_title: str = Field(description="Title shown at the top of the quiz page.")
+    units: List[UnitQuiz] = Field(
+        min_length=1,
+        description="One quiz section per selected unit.",
+    )
