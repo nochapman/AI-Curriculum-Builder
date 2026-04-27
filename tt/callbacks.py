@@ -19,6 +19,7 @@ from .guardrails import (
 )
 from .schemas import CurriculumBundle, QuizBundle
 from .tool_logging import elapsed_ms, log_tool_call, summarize_text
+from .tool_logging import log_model_usage
 from .tools import (
     create_curriculum_session_dir,
     safe_curriculum_filename,
@@ -36,6 +37,12 @@ TRACKING_QUERY_KEYS = {
     "mc_eid",
     "ref_src",
 }
+URL_PATTERN = re.compile(r"https?://[^\s<>)\"']+")
+SOFT_ERROR_PATTERNS = (
+    re.compile(r"<title>[^<]*(404|not found|page not found|does not exist)[^<]*</title>", re.I),
+    re.compile(r"\b(404|page not found|this page does not exist|the page you requested)[\s.]", re.I),
+)
+GROUNDING_REDIRECT_HOST = "vertexaisearch.cloud.google.com"
 
 
 def _normalize_bundle(raw_bundle: Any) -> CurriculumBundle:
@@ -84,6 +91,39 @@ def _agent_name(callback_context: CallbackContext, fallback: str) -> str:
     return getattr(agent, "name", None) or fallback
 
 
+def _invocation_id(callback_context: CallbackContext) -> str | None:
+    invocation_context = getattr(callback_context, "_invocation_context", None)
+    return getattr(invocation_context, "invocation_id", None)
+
+
+def log_model_usage_callback(
+    callback_context: CallbackContext,
+    llm_response: Any,
+) -> None:
+    usage_metadata = getattr(llm_response, "usage_metadata", None)
+    if not usage_metadata:
+        return None
+
+    log_model_usage(
+        agent_name=_agent_name(callback_context, "unknown_agent"),
+        model=getattr(llm_response, "model_version", None),
+        invocation_id=_invocation_id(callback_context),
+        prompt_token_count=getattr(usage_metadata, "prompt_token_count", None),
+        candidates_token_count=getattr(usage_metadata, "candidates_token_count", None),
+        thoughts_token_count=getattr(usage_metadata, "thoughts_token_count", None),
+        cached_content_token_count=getattr(
+            usage_metadata,
+            "cached_content_token_count",
+            None,
+        ),
+        total_token_count=getattr(usage_metadata, "total_token_count", None),
+        metadata={
+            "traffic_type": str(getattr(usage_metadata, "traffic_type", "")),
+        },
+    )
+    return None
+
+
 def _bundle_guardrail_values(bundle: CurriculumBundle) -> list[str]:
     values = [bundle.learner_summary, *bundle.assumptions]
     for file in bundle.files:
@@ -98,6 +138,75 @@ def _quiz_guardrail_values(bundle: QuizBundle) -> list[str]:
         for question in unit.questions:
             values.extend([question.question, question.explanation, *question.options])
     return values
+
+
+def _extract_urls(text: str) -> set[str]:
+    return {
+        _normalize_source_url(match.rstrip(".,;:"))
+        for match in URL_PATTERN.findall(text or "")
+    }
+
+
+def _verified_source_urls(callback_context: CallbackContext) -> set[str]:
+    verified_urls = {
+        _normalize_source_url(url)
+        for url in callback_context.state.get("verified_source_urls", {})
+    }
+    verified_sources_json = callback_context.state.get("verified_sources_json")
+    if verified_sources_json:
+        try:
+            verified_sources = json.loads(verified_sources_json)
+        except (TypeError, ValueError):
+            verified_sources = []
+        for source in verified_sources:
+            url = source.get("url") if isinstance(source, dict) else None
+            if url:
+                verified_urls.add(_normalize_source_url(url))
+    return verified_urls
+
+
+def _find_unverified_bundle_urls(
+    bundle: CurriculumBundle,
+    verified_urls: set[str],
+) -> dict[str, list[str]]:
+    unverified_urls: dict[str, list[str]] = {}
+    for file in bundle.files:
+        file_urls = _extract_urls(file.content)
+        bad_urls = sorted(url for url in file_urls if url not in verified_urls)
+        if bad_urls:
+            unverified_urls[file.filename] = bad_urls
+    return unverified_urls
+
+
+def _add_unverified_source_warning(content: str, urls: list[str]) -> str:
+    warning = (
+        "> **Resource verification warning:** One or more references in this lesson "
+        "could not be verified automatically. Use caution before relying on these "
+        "links, and confirm that each page exists and is trustworthy.\n\n"
+    )
+    url_list = "\n".join(f"> - {url}" for url in urls)
+    warning_block = f"{warning}{url_list}\n\n"
+
+    if content.startswith("# "):
+        first_line, separator, rest = content.partition("\n")
+        marked_title = f"{first_line} [Resources not verified - use caution]"
+        return f"{marked_title}{separator}{warning_block}{rest}"
+
+    return f"# Resources not verified - use caution\n\n{warning_block}{content}"
+
+
+def _annotate_unverified_bundle_urls(
+    bundle: CurriculumBundle,
+    unverified_urls: dict[str, list[str]],
+) -> None:
+    for file in bundle.files:
+        urls = unverified_urls.get(file.filename)
+        if urls:
+            file.content = _add_unverified_source_warning(file.content, urls)
+            file.summary = (
+                f"{file.summary} Some resource links were not automatically verified; "
+                "the saved file includes a caution note."
+            )
 
 
 def _build_quiz_html(bundle: QuizBundle) -> str:
@@ -399,6 +508,16 @@ def _parse_last_modified(header_value: str | None) -> str | None:
     return parsed.astimezone(timezone.utc).isoformat()
 
 
+def _looks_like_soft_error(content_type: str, body: bytes) -> bool:
+    if "html" not in content_type:
+        return False
+    try:
+        text = body.decode("utf-8", errors="ignore")
+    except (AttributeError, UnicodeDecodeError):
+        return False
+    return any(pattern.search(text) for pattern in SOFT_ERROR_PATTERNS)
+
+
 def _validate_source_url(url: str) -> dict[str, Any] | None:
     start_time = time.perf_counter()
     normalized_url = _normalize_source_url(url)
@@ -409,7 +528,7 @@ def _validate_source_url(url: str) -> dict[str, Any] | None:
     last_error_category: str | None = None
     last_error_message: str | None = None
 
-    for method in ("HEAD", "GET"):
+    for method in ("GET", "HEAD"):
         request = Request(normalized_url, headers=headers, method=method)
         try:
             with urlopen(request, timeout=VALIDATION_TIMEOUT_SECS) as response:
@@ -431,6 +550,35 @@ def _validate_source_url(url: str) -> dict[str, Any] | None:
                 header_map = response.headers
                 last_modified = _parse_last_modified(header_map.get("Last-Modified"))
                 content_type = header_map.get_content_type()
+                body_sample = response.read(32768) if method == "GET" else b""
+                if _looks_like_soft_error(content_type, body_sample):
+                    log_tool_call(
+                        tool_name="web.url_validation",
+                        agent_name="research_agent",
+                        input_summary=normalized_url,
+                        output_summary=f"{method} looked like a soft 404: {final_url}",
+                        success=False,
+                        latency_ms=elapsed_ms(start_time),
+                        error_category="soft_404",
+                        metadata={
+                            "method": method,
+                            "status_code": status_code,
+                            "content_type": content_type,
+                        },
+                    )
+                    return None
+                if GROUNDING_REDIRECT_HOST in urlparse(final_url).netloc:
+                    log_tool_call(
+                        tool_name="web.url_validation",
+                        agent_name="research_agent",
+                        input_summary=normalized_url,
+                        output_summary=f"Grounding redirect did not resolve: {final_url}",
+                        success=False,
+                        latency_ms=elapsed_ms(start_time),
+                        error_category="unresolved_grounding_redirect",
+                        metadata={"method": method, "status_code": status_code},
+                    )
+                    return None
                 result = {
                     "url": final_url,
                     "status_code": status_code,
@@ -543,7 +691,6 @@ def collect_verified_sources_callback(
             raw_url_count += 1
             if "vertexaisearch.cloud.google.com/grounding-api-redirect/" in raw_url:
                 skipped_redirect_count += 1
-                continue
 
             normalized_url = _normalize_source_url(raw_url)
             cached_validation = validation_cache.get(normalized_url)
@@ -591,9 +738,13 @@ def collect_verified_sources_callback(
             f"syllabus={summarize_text(callback_context.state.get('syllabus_json'))}"
         ),
         output_summary=f"Verified {verified_after_count} unique source URLs.",
-        success=verified_after_count > verified_before_count or raw_url_count > 0,
+        success=verified_after_count > 0,
         latency_ms=elapsed_ms(start_time),
-        error_category=None if raw_url_count else "no_grounding_metadata",
+        error_category=None
+        if verified_after_count > 0
+        else "no_verified_sources"
+        if raw_url_count
+        else "no_grounding_metadata",
         metadata={
             "raw_url_count": raw_url_count,
             "skipped_redirect_count": skipped_redirect_count,
@@ -647,6 +798,46 @@ def save_curriculum_bundle_callback(
         )
         return Content()
 
+    verified_urls = _verified_source_urls(callback_context)
+    unverified_urls = _find_unverified_bundle_urls(bundle, verified_urls)
+    if unverified_urls:
+        formatted_unverified = json.dumps(
+            unverified_urls,
+            ensure_ascii=False,
+            indent=2,
+        )
+        _annotate_unverified_bundle_urls(bundle, unverified_urls)
+        callback_context.state["source_integrity_warning"] = True
+        callback_context.state["source_integrity_report"] = formatted_unverified
+        log_tool_call(
+            tool_name="source_integrity_check",
+            agent_name=_agent_name(callback_context, "curriculum_writer_agent"),
+            input_summary=bundle.learner_summary,
+            output_summary=(
+                "Some lesson URLs were not verified. Curriculum will be saved "
+                "with caution notes.\n"
+                f"{formatted_unverified}"
+            ),
+            success=True,
+            metadata={
+                "verified_url_count": len(verified_urls),
+                "affected_file_count": len(unverified_urls),
+                "warning_category": "unverified_url",
+            },
+        )
+    else:
+        log_tool_call(
+            tool_name="source_integrity_check",
+            agent_name=_agent_name(callback_context, "curriculum_writer_agent"),
+            input_summary=bundle.learner_summary,
+            output_summary="All lesson URLs are present in the verified source list.",
+            success=True,
+            metadata={
+                "verified_url_count": len(verified_urls),
+                "file_count": len(bundle.files),
+            },
+        )
+
     log_tool_call(
         tool_name="guardrail_check",
         agent_name=_agent_name(callback_context, "curriculum_writer_agent"),
@@ -672,6 +863,13 @@ def save_curriculum_bundle_callback(
         bundle,
         artifact_dir=str(relative_session_dir),
     )
+    if unverified_urls:
+        callback_context.state["generated_curriculum_report"] += (
+            "\n\nSource verification warning:\n"
+            "Some files include references that could not be verified automatically. "
+            "Those files were saved with '[Resources not verified - use caution]' "
+            "in the title and a warning note near the top."
+        )
     return Content()
 
 

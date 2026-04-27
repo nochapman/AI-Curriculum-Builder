@@ -4,7 +4,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .tool_logging import elapsed_ms, log_tool_call
+from .tool_logging import elapsed_ms, log_tool_call, refresh_usage_report
 
 
 PACKAGE_DIR = Path(__file__).resolve().parent
@@ -350,3 +350,34 @@ def save_text_file(
         },
     )
     return f"Saved text file to {file_path}"
+
+
+def refresh_usage_report_tool() -> str:
+    """Regenerate usage_report.json and usage_report.md from tool_calls.jsonl."""
+    start_time = time.perf_counter()
+    result = refresh_usage_report()
+    if result is None:
+        message = "Usage report refresh failed because the report module could not be imported."
+        log_tool_call(
+            tool_name="usage_report.refresh",
+            agent_name="usage_report_agent",
+            input_summary="manual refresh",
+            output_summary=message,
+            success=False,
+            latency_ms=elapsed_ms(start_time),
+            error_category="report_import_error",
+        )
+        return message
+
+    json_path, md_path = result
+    message = f"Usage reports updated: {json_path}, {md_path}"
+    log_tool_call(
+        tool_name="usage_report.refresh",
+        agent_name="usage_report_agent",
+        input_summary="manual refresh",
+        output_summary=message,
+        success=True,
+        latency_ms=elapsed_ms(start_time),
+        metadata={"json_path": str(json_path), "md_path": str(md_path)},
+    )
+    return message

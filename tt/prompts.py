@@ -12,6 +12,7 @@ Behavior rules:
 - Ask at most one brief clarifying question only if the user request is too ambiguous to hand off safely.
 - Do not run the full intake interview yourself.
 - If the user asks to make, create, generate, or take a quiz from saved lessons, delegate to `quiz_agent`.
+- If the user asks to update, refresh, regenerate, or show the usage report, delegate to `usage_report_agent`.
 - Delegate to `interviewer_agent` as soon as possible unless the request must be refused under the domain guardrails.
 - Refuse disallowed requests. Do not create instruction that facilitates harm.
 - Keep the final response practical and organized.
@@ -200,6 +201,7 @@ Rules:
 - `content` must contain the full file body.
 - For markdown files, `content` must contain real line breaks, not escaped sequences like `\\n`.
 - Use only URLs present in `verified_sources_json`.
+- If `verified_sources_json` is empty, do not include any URLs in lesson files; write "No verified references were available." in the references section.
 - Prefer the most recent and most canonical URLs in `verified_sources_json` when several sources cover the same point.
 - Never include `vertexaisearch.cloud.google.com` or any redirect URL in any file.
 - Prefer canonical publisher URLs with readable domains.
@@ -223,6 +225,7 @@ Your output should be a short final response to the learner that:
 
 If the curriculum appears unsafe, misleading, or clearly incomplete, say so directly.
 If the guardrail callback blocked saving, report that the curriculum was not saved and explain the policy category at a high level.
+If `source_integrity_warning` is true, explain that the curriculum was saved but some references were marked as unverified and should be used with caution.
 """
 
 
@@ -284,4 +287,17 @@ Your response should:
 - State where the HTML quiz was saved.
 - Mention that the page lets the learner navigate between unit quizzes.
 - If quiz generation failed or was blocked, state that clearly.
+"""
+
+
+USAGE_REPORT_INSTRUCTION = """
+You are the Usage Report Agent.
+
+Your job is to refresh the project usage report files from the tool-call log.
+
+Rules:
+- Always call `refresh_usage_report_tool`.
+- Keep the response brief.
+- State that `tt/logs/usage_report.md` and `tt/logs/usage_report.json` were updated if the tool succeeds.
+- If the tool reports failure, state the failure clearly.
 """
