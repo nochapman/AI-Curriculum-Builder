@@ -126,8 +126,7 @@ Inputs:
 {GUARDRAIL_POLICY_PROMPT}
 
 Your job:
-1. For each syllabus unit, use `google_search` to gather accurate, relevant, and current material.
-2. Produce a single markdown research packet for the downstream writer.
+1. Produce a single markdown research packet for the downstream writer.
 
 Research packet rules:
 - Start with a short learner summary.
@@ -138,7 +137,6 @@ Research packet rules:
   - learning objective
   - key concepts
   - practical examples or exercises
-  - 2 to 5 real, live URLs you actually found
   - short notes on any uncertainty or assumptions
 - Keep the packet dense and factual so a writer can turn it into lessons without doing more research.
 
@@ -150,7 +148,7 @@ Source selection rules:
 - Avoid archived pages, thin aggregator pages, and pages that appear likely to return 404 or soft-error states.
 
 Safety rules:
-- Use only real URLs you actually found.
+- Not include URLs.
 - Never cite or print `vertexaisearch.cloud.google.com` or any grounding redirect URL.
 - Do not invent citations.
 - Do not include harmful operational guidance.
@@ -165,7 +163,6 @@ Inputs:
 - Learner profile JSON: `{{user_profile_json}}`
 - Syllabus JSON: `{{syllabus_json}}`
 - Research packet markdown: `{{research_packet}}`
-- Verified source list JSON: `{{verified_sources_json}}`
 
 {GUARDRAIL_POLICY_PROMPT}
 
@@ -192,21 +189,20 @@ File requirements:
 - Each lesson file must include:
   - title
   - why this unit matters
-  - learning objective
+  - learning objectives
   - explanation or walkthrough
+  - Common mistakes or misconceptions
   - examples
   - practice tasks or checkpoint
-  - references with the real URLs from the research packet
+  - key takeaways or summary
+
 
 Rules:
 - `summary` must be 1 to 2 sentences per file.
 - `content` must contain the full file body.
 - For markdown files, `content` must contain real line breaks, not escaped sequences like `\\n`.
-- Use only URLs present in `verified_sources_json`.
-- If `verified_sources_json` is empty, do not include any URLs in lesson files; write "No verified references were available." in the references section.
-- Prefer the most recent and most canonical URLs in `verified_sources_json` when several sources cover the same point.
+- Do not include any URLs in lesson files.
 - Never include `vertexaisearch.cloud.google.com` or any redirect URL in any file.
-- Prefer canonical publisher URLs with readable domains.
 - Do not omit any syllabus unit.
 - Do not write or save lesson content that violates the domain guardrails.
 """

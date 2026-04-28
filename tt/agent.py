@@ -9,7 +9,6 @@ from google.adk.tools import google_search
 from google.genai import types
 
 from .callbacks import (
-    collect_verified_sources_callback,
     log_model_usage_callback,
     save_course_page_bundle_callback,
     save_curriculum_bundle_callback,
@@ -93,7 +92,6 @@ content_generator_agent = LlmAgent(
     tools=[google_search],
     output_key="research_packet",
     after_model_callback=log_model_usage_callback,
-    after_agent_callback=collect_verified_sources_callback,
     generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
 )
 

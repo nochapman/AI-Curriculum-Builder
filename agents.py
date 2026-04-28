@@ -158,7 +158,7 @@ def run_content_generator(unit_title: str, objective: str, research: str, previo
     
     Critique to address (if any): {previous_feedback}
     
-    Format the output in clean Markdown. Include the reference URLs at the bottom.
+    Format the output in clean Markdown. Do not include any URLs or web links in the module content.
     """
     
     max_retries = 3
