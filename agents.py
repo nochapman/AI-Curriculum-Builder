@@ -134,8 +134,7 @@ def run_researcher(learning_objective: str) -> str:
     prompt = f"""
     Research the following educational objective: "{learning_objective}"
     You MUST use the Google Search tool to find accurate information. 
-    Return a dense summary of the concepts, and include at least 2 REAL, verified URLs from your search results for the user to reference.
-    Do NOT hallucinate links.
+    Return a dense summary of the concepts.
     """
     
     response = client.models.generate_content(

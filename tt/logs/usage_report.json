@@ -1,4 +1,5 @@
 {
+<<<<<<< Updated upstream
   "generated_at": "2026-04-28T21:43:55.844885+00:00",
   "log_path": "/Users/bumsookim/Downloads/DEEP LEARNING/project/AI-Curriculum-Builder/tt/logs/tool_calls.jsonl",
   "model_usage_log_path": "/Users/bumsookim/Downloads/DEEP LEARNING/project/AI-Curriculum-Builder/tt/logs/model_usage.jsonl",
@@ -13,10 +14,27 @@
     "average_prompt_token_count": 7422.35,
     "average_candidates_token_count": 1310.61,
     "average_total_token_count": 9236.97,
+=======
+  "generated_at": "2026-04-28T21:41:21.664990+00:00",
+  "log_path": "C:\\React\\rep\\AI-Curriculum-Builder\\tt\\logs\\tool_calls.jsonl",
+  "model_usage_log_path": "C:\\React\\rep\\AI-Curriculum-Builder\\tt\\logs\\model_usage.jsonl",
+  "session_db_path": "C:\\React\\rep\\AI-Curriculum-Builder\\tt\\.adk\\session.db",
+  "actual_model_usage": {
+    "model_call_count": 388,
+    "prompt_token_count": 3649784,
+    "candidates_token_count": 573448,
+    "thoughts_token_count": 213381,
+    "cached_content_token_count": 657677,
+    "total_token_count": 4439574,
+    "average_prompt_token_count": 9406.66,
+    "average_candidates_token_count": 1477.96,
+    "average_total_token_count": 11442.2,
+>>>>>>> Stashed changes
     "cost_usd_estimate": null,
     "average_cost_usd_estimate": null,
     "by_agent": {
       "root_agent": {
+<<<<<<< Updated upstream
         "calls": 95,
         "prompt_token_count": 170371,
         "candidates_token_count": 18720,
@@ -40,10 +58,36 @@
         "average_prompt_token_count": 3425.94,
         "average_candidates_token_count": 38.53,
         "average_total_token_count": 3547.82,
+=======
+        "calls": 90,
+        "prompt_token_count": 311233,
+        "candidates_token_count": 18657,
+        "thoughts_token_count": 14485,
+        "cached_content_token_count": 130175,
+        "total_token_count": 344375,
+        "cost_usd_estimate": null,
+        "average_prompt_token_count": 3458.14,
+        "average_candidates_token_count": 207.3,
+        "average_total_token_count": 3826.39,
+        "average_cost_usd_estimate": null
+      },
+      "interviewer_agent": {
+        "calls": 134,
+        "prompt_token_count": 710130,
+        "candidates_token_count": 6408,
+        "thoughts_token_count": 11885,
+        "cached_content_token_count": 123439,
+        "total_token_count": 728423,
+        "cost_usd_estimate": null,
+        "average_prompt_token_count": 5299.48,
+        "average_candidates_token_count": 47.82,
+        "average_total_token_count": 5435.99,
+>>>>>>> Stashed changes
         "average_cost_usd_estimate": null
       },
       "interview_transcript_agent": {
         "calls": 21,
+<<<<<<< Updated upstream
         "prompt_token_count": 58740,
         "candidates_token_count": 1697,
         "thoughts_token_count": 3258,
@@ -53,10 +97,22 @@
         "average_prompt_token_count": 2797.14,
         "average_candidates_token_count": 80.81,
         "average_total_token_count": 3033.1,
+=======
+        "prompt_token_count": 109583,
+        "candidates_token_count": 1914,
+        "thoughts_token_count": 3789,
+        "cached_content_token_count": 0,
+        "total_token_count": 115286,
+        "cost_usd_estimate": null,
+        "average_prompt_token_count": 5218.24,
+        "average_candidates_token_count": 91.14,
+        "average_total_token_count": 5489.81,
+>>>>>>> Stashed changes
         "average_cost_usd_estimate": null
       },
       "profile_extractor_agent": {
         "calls": 28,
+<<<<<<< Updated upstream
         "prompt_token_count": 65893,
         "candidates_token_count": 13388,
         "thoughts_token_count": 4938,
@@ -66,10 +122,22 @@
         "average_prompt_token_count": 2353.32,
         "average_candidates_token_count": 478.14,
         "average_total_token_count": 3007.82,
+=======
+        "prompt_token_count": 117235,
+        "candidates_token_count": 13498,
+        "thoughts_token_count": 5632,
+        "cached_content_token_count": 0,
+        "total_token_count": 136365,
+        "cost_usd_estimate": null,
+        "average_prompt_token_count": 4186.96,
+        "average_candidates_token_count": 482.07,
+        "average_total_token_count": 4870.18,
+>>>>>>> Stashed changes
         "average_cost_usd_estimate": null
       },
       "curriculum_director_agent": {
         "calls": 27,
+<<<<<<< Updated upstream
         "prompt_token_count": 91888,
         "candidates_token_count": 29626,
         "thoughts_token_count": 21856,
@@ -79,10 +147,22 @@
         "average_prompt_token_count": 3403.26,
         "average_candidates_token_count": 1097.26,
         "average_total_token_count": 5310.0,
+=======
+        "prompt_token_count": 143333,
+        "candidates_token_count": 31009,
+        "thoughts_token_count": 23589,
+        "cached_content_token_count": 0,
+        "total_token_count": 197931,
+        "cost_usd_estimate": null,
+        "average_prompt_token_count": 5308.63,
+        "average_candidates_token_count": 1148.48,
+        "average_total_token_count": 7330.78,
+>>>>>>> Stashed changes
         "average_cost_usd_estimate": null
       },
       "research_agent": {
         "calls": 23,
+<<<<<<< Updated upstream
         "prompt_token_count": 155135,
         "candidates_token_count": 225072,
         "thoughts_token_count": 22814,
@@ -92,10 +172,22 @@
         "average_prompt_token_count": 6745.0,
         "average_candidates_token_count": 9785.74,
         "average_total_token_count": 17590.04,
+=======
+        "prompt_token_count": 208056,
+        "candidates_token_count": 247390,
+        "thoughts_token_count": 23657,
+        "cached_content_token_count": 0,
+        "total_token_count": 482064,
+        "cost_usd_estimate": null,
+        "average_prompt_token_count": 9045.91,
+        "average_candidates_token_count": 10756.09,
+        "average_total_token_count": 20959.3,
+>>>>>>> Stashed changes
         "average_cost_usd_estimate": null
       },
       "curriculum_writer_agent": {
         "calls": 29,
+<<<<<<< Updated upstream
         "prompt_token_count": 822293,
         "candidates_token_count": 231191,
         "thoughts_token_count": 106796,
@@ -170,6 +262,30 @@
         "average_prompt_token_count": 990.5,
         "average_candidates_token_count": 27.0,
         "average_total_token_count": 1058.5,
+=======
+        "prompt_token_count": 943197,
+        "candidates_token_count": 235750,
+        "thoughts_token_count": 111460,
+        "cached_content_token_count": 173055,
+        "total_token_count": 1290407,
+        "cost_usd_estimate": null,
+        "average_prompt_token_count": 32524.03,
+        "average_candidates_token_count": 8129.31,
+        "average_total_token_count": 44496.79,
+        "average_cost_usd_estimate": null
+      },
+      "module_critic_agent": {
+        "calls": 20,
+        "prompt_token_count": 587216,
+        "candidates_token_count": 13277,
+        "thoughts_token_count": 18357,
+        "cached_content_token_count": 75763,
+        "total_token_count": 618850,
+        "cost_usd_estimate": null,
+        "average_prompt_token_count": 29360.8,
+        "average_candidates_token_count": 663.85,
+        "average_total_token_count": 30942.5,
+>>>>>>> Stashed changes
         "average_cost_usd_estimate": null
       },
       "quiz_generator_agent": {
@@ -197,9 +313,23 @@
         "average_candidates_token_count": 78.0,
         "average_total_token_count": 64631.0,
         "average_cost_usd_estimate": null
+      },
+      "usage_report_agent": {
+        "calls": 13,
+        "prompt_token_count": 348890,
+        "candidates_token_count": 209,
+        "thoughts_token_count": 341,
+        "cached_content_token_count": 155245,
+        "total_token_count": 349440,
+        "cost_usd_estimate": null,
+        "average_prompt_token_count": 26837.69,
+        "average_candidates_token_count": 16.08,
+        "average_total_token_count": 26880.0,
+        "average_cost_usd_estimate": null
       }
     }
   },
+<<<<<<< Updated upstream
   "call_count": 320,
   "success_count": 310,
   "failure_count": 10,
@@ -211,32 +341,42 @@
   "average_input_tokens_estimate": 46.53,
   "average_output_tokens_estimate": 38.06,
   "average_total_tokens_estimate": 84.59,
+=======
+  "call_count": 71,
+  "success_count": 70,
+  "failure_count": 1,
+  "success_rate": 0.9859,
+  "average_latency_ms": 975.68,
+  "input_tokens_estimate": 3617,
+  "output_tokens_estimate": 2163,
+  "total_tokens_estimate": 5780,
+  "average_input_tokens_estimate": 50.94,
+  "average_output_tokens_estimate": 30.46,
+  "average_total_tokens_estimate": 81.41,
+>>>>>>> Stashed changes
   "cost_usd_estimate": null,
   "average_cost_usd_estimate": null,
   "cost_note": "Cost is estimated only when CURRICULUM_INPUT_COST_PER_1M_TOKENS and CURRICULUM_OUTPUT_COST_PER_1M_TOKENS are set.",
   "error_categories": {
-    "no_grounding_metadata": 2,
-    "TimeoutError": 1,
-    "http_error": 2,
-    "unverified_url": 3,
-    "soft_404": 2
+    "soft_404": 1
   },
   "by_tool": {
-    "logger_smoke_test": {
-      "calls": 1,
-      "successes": 1,
-      "failures": 0,
-      "input_tokens_estimate": 4,
-      "output_tokens_estimate": 4,
-      "total_tokens_estimate": 8,
+    "web.url_validation": {
+      "calls": 41,
+      "successes": 40,
+      "failures": 1,
+      "input_tokens_estimate": 2496,
+      "output_tokens_estimate": 725,
+      "total_tokens_estimate": 3221,
       "cost_usd_estimate": null,
-      "average_input_tokens_estimate": 4.0,
-      "average_output_tokens_estimate": 4.0,
-      "average_total_tokens_estimate": 8.0,
+      "average_input_tokens_estimate": 60.88,
+      "average_output_tokens_estimate": 17.68,
+      "average_total_tokens_estimate": 78.56,
       "average_cost_usd_estimate": null,
-      "average_latency_ms": 1.23
+      "average_latency_ms": 780.64
     },
     "google_search": {
+<<<<<<< Updated upstream
       "calls": 11,
       "successes": 9,
       "failures": 2,
@@ -261,10 +401,51 @@
       "average_input_tokens_estimate": 46.45,
       "average_output_tokens_estimate": 9.82,
       "average_total_tokens_estimate": 56.27,
+=======
+      "calls": 2,
+      "successes": 2,
+      "failures": 0,
+      "input_tokens_estimate": 427,
+      "output_tokens_estimate": 16,
+      "total_tokens_estimate": 443,
+      "cost_usd_estimate": null,
+      "average_input_tokens_estimate": 213.5,
+      "average_output_tokens_estimate": 8.0,
+      "average_total_tokens_estimate": 221.5,
+      "average_cost_usd_estimate": null,
+      "average_latency_ms": 16665.67
+    },
+    "source_integrity_check": {
+      "calls": 2,
+      "successes": 2,
+      "failures": 0,
+      "input_tokens_estimate": 209,
+      "output_tokens_estimate": 219,
+      "total_tokens_estimate": 428,
+      "cost_usd_estimate": null,
+      "average_input_tokens_estimate": 104.5,
+      "average_output_tokens_estimate": 109.5,
+      "average_total_tokens_estimate": 214.0,
+      "average_cost_usd_estimate": null,
+      "average_latency_ms": null
+    },
+    "guardrail_check": {
+      "calls": 2,
+      "successes": 2,
+      "failures": 0,
+      "input_tokens_estimate": 209,
+      "output_tokens_estimate": 20,
+      "total_tokens_estimate": 229,
+      "cost_usd_estimate": null,
+      "average_input_tokens_estimate": 104.5,
+      "average_output_tokens_estimate": 10.0,
+      "average_total_tokens_estimate": 114.5,
+>>>>>>> Stashed changes
       "average_cost_usd_estimate": null,
       "average_latency_ms": null
     },
     "file_io.save_text_file": {
+<<<<<<< Updated upstream
       "calls": 89,
       "successes": 89,
       "failures": 0,
@@ -375,6 +556,20 @@
       "average_total_tokens_estimate": 22.0,
       "average_cost_usd_estimate": null,
       "average_latency_ms": 28.69
+=======
+      "calls": 24,
+      "successes": 24,
+      "failures": 0,
+      "input_tokens_estimate": 276,
+      "output_tokens_estimate": 1183,
+      "total_tokens_estimate": 1459,
+      "cost_usd_estimate": null,
+      "average_input_tokens_estimate": 11.5,
+      "average_output_tokens_estimate": 49.29,
+      "average_total_tokens_estimate": 60.79,
+      "average_cost_usd_estimate": null,
+      "average_latency_ms": 1.38
+>>>>>>> Stashed changes
     }
   }
 }
