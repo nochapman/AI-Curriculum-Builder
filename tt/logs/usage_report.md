@@ -1,33 +1,33 @@
 # Usage Report
 
-- Generated at: 2026-04-27T22:28:17.471473+00:00
+- Generated at: 2026-04-28T21:43:55.844885+00:00
 - Source log: /Users/bumsookim/Downloads/DEEP LEARNING/project/AI-Curriculum-Builder/tt/logs/tool_calls.jsonl
 - Model usage log: /Users/bumsookim/Downloads/DEEP LEARNING/project/AI-Curriculum-Builder/tt/logs/model_usage.jsonl
 - ADK session DB: /Users/bumsookim/Downloads/DEEP LEARNING/project/AI-Curriculum-Builder/tt/.adk/session.db
 
 ## Actual Model Token Usage
-- Model calls: 348
-- Prompt/input tokens: 2764304
-- Candidate/output tokens: 511272
-- Thoughts tokens: 187946
-- Cached content tokens: 451734
-- Total tokens: 3465072
-- Average prompt/input tokens: 7943.4
-- Average candidate/output tokens: 1469.17
-- Average total tokens: 9957.1
+- Model calls: 417
+- Prompt/input tokens: 3095120
+- Candidate/output tokens: 546526
+- Thoughts tokens: 208622
+- Cached content tokens: 477883
+- Total tokens: 3851818
+- Average prompt/input tokens: 7422.35
+- Average candidate/output tokens: 1310.61
+- Average total tokens: 9236.97
 - Total cost USD estimate: None
 - Average cost USD estimate: None
 
 ## Tool Log Summary
-- Tool calls: 285
-- Success rate: 0.9649
-- Average latency ms: 1007.28
-- Total input tokens estimate: 13677
-- Total output tokens estimate: 10858
-- Total tokens estimate: 24535
-- Average input tokens estimate: 47.99
-- Average output tokens estimate: 38.1
-- Average total tokens estimate: 86.09
+- Tool calls: 320
+- Success rate: 0.9688
+- Average latency ms: 975.52
+- Total input tokens estimate: 14891
+- Total output tokens estimate: 12179
+- Total tokens estimate: 27070
+- Average input tokens estimate: 46.53
+- Average output tokens estimate: 38.06
+- Average total tokens estimate: 84.59
 - Total cost USD estimate: None
 - Average cost USD estimate: None
 - Cost note: Cost is estimated only when CURRICULUM_INPUT_COST_PER_1M_TOKENS and CURRICULUM_OUTPUT_COST_PER_1M_TOKENS are set.
@@ -40,52 +40,76 @@
 - unverified_url: 3
 
 ## Actual Model Usage By Agent
+### course_page_generator_agent
+- Calls: 8
+- Prompt/input tokens: 86412
+- Candidate/output tokens: 2722
+- Total tokens: 90154
+- Average total tokens: 11269.25
+- Average cost USD estimate: None
+
+### course_page_report_agent
+- Calls: 3
+- Prompt/input tokens: 41474
+- Candidate/output tokens: 178
+- Total tokens: 41928
+- Average total tokens: 13976.0
+- Average cost USD estimate: None
+
 ### curriculum_director_agent
-- Calls: 24
-- Prompt/input tokens: 88994
-- Candidate/output tokens: 28576
-- Total tokens: 137674
-- Average total tokens: 5736.42
+- Calls: 27
+- Prompt/input tokens: 91888
+- Candidate/output tokens: 29626
+- Total tokens: 143370
+- Average total tokens: 5310.0
 - Average cost USD estimate: None
 
 ### curriculum_writer_agent
-- Calls: 26
-- Prompt/input tokens: 772905
-- Candidate/output tokens: 221089
-- Total tokens: 1093418
-- Average total tokens: 42054.54
+- Calls: 29
+- Prompt/input tokens: 822293
+- Candidate/output tokens: 231191
+- Total tokens: 1160280
+- Average total tokens: 40009.66
+- Average cost USD estimate: None
+
+### dashboard_manager_agent
+- Calls: 4
+- Prompt/input tokens: 3962
+- Candidate/output tokens: 108
+- Total tokens: 4234
+- Average total tokens: 1058.5
 - Average cost USD estimate: None
 
 ### interview_transcript_agent
-- Calls: 18
-- Prompt/input tokens: 56762
-- Candidate/output tokens: 1467
-- Total tokens: 61189
-- Average total tokens: 3399.39
+- Calls: 21
+- Prompt/input tokens: 58740
+- Candidate/output tokens: 1697
+- Total tokens: 63695
+- Average total tokens: 3033.1
 - Average cost USD estimate: None
 
 ### interviewer_agent
-- Calls: 114
-- Prompt/input tokens: 408276
-- Candidate/output tokens: 4591
-- Total tokens: 422193
-- Average total tokens: 3703.45
+- Calls: 137
+- Prompt/input tokens: 469354
+- Candidate/output tokens: 5279
+- Total tokens: 486051
+- Average total tokens: 3547.82
 - Average cost USD estimate: None
 
 ### module_critic_agent
-- Calls: 18
-- Prompt/input tokens: 517611
-- Candidate/output tokens: 11267
-- Total tokens: 544454
-- Average total tokens: 30247.44
+- Calls: 21
+- Prompt/input tokens: 552091
+- Candidate/output tokens: 12945
+- Total tokens: 583024
+- Average total tokens: 27763.05
 - Average cost USD estimate: None
 
 ### profile_extractor_agent
-- Calls: 25
-- Prompt/input tokens: 63325
-- Candidate/output tokens: 13216
-- Total tokens: 81159
-- Average total tokens: 3246.36
+- Calls: 28
+- Prompt/input tokens: 65893
+- Candidate/output tokens: 13388
+- Total tokens: 84219
+- Average total tokens: 3007.82
 - Average cost USD estimate: None
 
 ### quiz_generator_agent
@@ -105,27 +129,27 @@
 - Average cost USD estimate: None
 
 ### research_agent
-- Calls: 20
-- Prompt/input tokens: 148551
-- Candidate/output tokens: 206964
-- Total tokens: 378427
-- Average total tokens: 18921.35
+- Calls: 23
+- Prompt/input tokens: 155135
+- Candidate/output tokens: 225072
+- Total tokens: 404571
+- Average total tokens: 17590.04
 - Average cost USD estimate: None
 
 ### root_agent
-- Calls: 85
-- Prompt/input tokens: 159889
-- Candidate/output tokens: 18550
-- Total tokens: 192456
-- Average total tokens: 2264.19
+- Calls: 95
+- Prompt/input tokens: 170371
+- Candidate/output tokens: 18720
+- Total tokens: 205264
+- Average total tokens: 2160.67
 - Average cost USD estimate: None
 
 ### usage_report_agent
-- Calls: 15
-- Prompt/input tokens: 377080
-- Candidate/output tokens: 216
-- Total tokens: 377669
-- Average total tokens: 25177.93
+- Calls: 18
+- Prompt/input tokens: 406596
+- Candidate/output tokens: 264
+- Total tokens: 408595
+- Average total tokens: 22699.72
 - Average cost USD estimate: None
 
 
@@ -138,6 +162,14 @@
 - Average total tokens estimate: 9.0
 - Average cost USD estimate: None
 
+### file_io.load_curriculum_units_for_course_page
+- Calls: 3
+- Successes: 3
+- Failures: 0
+- Average latency ms: 1.91
+- Average total tokens estimate: 39.0
+- Average cost USD estimate: None
+
 ### file_io.load_curriculum_units_for_quiz
 - Calls: 6
 - Successes: 6
@@ -146,28 +178,36 @@
 - Average total tokens estimate: 43.0
 - Average cost USD estimate: None
 
-### file_io.save_text_file
-- Calls: 79
-- Successes: 79
+### file_io.refresh_canvas_dashboard
+- Calls: 5
+- Successes: 5
 - Failures: 0
-- Average latency ms: 0.35
-- Average total tokens estimate: 64.03
+- Average latency ms: 28.69
+- Average total tokens estimate: 22.0
+- Average cost USD estimate: None
+
+### file_io.save_text_file
+- Calls: 89
+- Successes: 89
+- Failures: 0
+- Average latency ms: 0.36
+- Average total tokens estimate: 63.39
 - Average cost USD estimate: None
 
 ### google_search
-- Calls: 10
-- Successes: 8
+- Calls: 11
+- Successes: 9
 - Failures: 2
-- Average latency ms: 13717.57
-- Average total tokens estimate: 195.8
+- Average latency ms: 13460.99
+- Average total tokens estimate: 197.36
 - Average cost USD estimate: None
 
 ### guardrail_check
-- Calls: 8
-- Successes: 8
+- Calls: 11
+- Successes: 11
 - Failures: 0
 - Average latency ms: None
-- Average total tokens estimate: 61.62
+- Average total tokens estimate: 56.27
 - Average cost USD estimate: None
 
 ### logger_smoke_test
@@ -179,11 +219,11 @@
 - Average cost USD estimate: None
 
 ### source_integrity_check
-- Calls: 6
-- Successes: 3
+- Calls: 7
+- Successes: 4
 - Failures: 3
 - Average latency ms: None
-- Average total tokens estimate: 602.83
+- Average total tokens estimate: 581.86
 - Average cost USD estimate: None
 
 ### usage_report.refresh
@@ -195,9 +235,9 @@
 - Average cost USD estimate: None
 
 ### web.url_validation
-- Calls: 167
-- Successes: 162
+- Calls: 179
+- Successes: 174
 - Failures: 5
-- Average latency ms: 812.53
-- Average total tokens estimate: 76.22
+- Average latency ms: 817.19
+- Average total tokens estimate: 76.3
 - Average cost USD estimate: None

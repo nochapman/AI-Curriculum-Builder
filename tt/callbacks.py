@@ -4,6 +4,7 @@ import re
 import time
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
+from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
@@ -17,11 +18,13 @@ from .guardrails import (
     find_many_guardrail_violations,
     format_guardrail_violations,
 )
-from .schemas import CurriculumBundle, QuizBundle
+from .schemas import CoursePageBundle, CurriculumBundle, QuizBundle
 from .tool_logging import elapsed_ms, log_tool_call, summarize_text
 from .tool_logging import log_model_usage
 from .tools import (
+    _resolve_curriculum_session,
     create_curriculum_session_dir,
+    refresh_canvas_dashboard,
     safe_curriculum_filename,
     save_text_file,
 )
@@ -63,6 +66,16 @@ def _normalize_quiz_bundle(raw_bundle: Any) -> QuizBundle:
     if hasattr(raw_bundle, "model_dump"):
         return QuizBundle.model_validate(raw_bundle.model_dump())
     return QuizBundle.model_validate(raw_bundle)
+
+
+def _normalize_course_page_bundle(raw_bundle: Any) -> CoursePageBundle:
+    if isinstance(raw_bundle, CoursePageBundle):
+        return raw_bundle
+    if isinstance(raw_bundle, str):
+        return CoursePageBundle.model_validate_json(raw_bundle)
+    if hasattr(raw_bundle, "model_dump"):
+        return CoursePageBundle.model_validate(raw_bundle.model_dump())
+    return CoursePageBundle.model_validate(raw_bundle)
 
 
 def _build_report(bundle: CurriculumBundle, artifact_dir: str | None = None) -> str:
@@ -138,6 +151,29 @@ def _quiz_guardrail_values(bundle: QuizBundle) -> list[str]:
         for question in unit.questions:
             values.extend([question.question, question.explanation, *question.options])
     return values
+
+
+def _course_page_guardrail_values(bundle: CoursePageBundle) -> list[str]:
+    values = [bundle.source_session_dir, bundle.course_title, bundle.course_summary]
+    for unit in bundle.units:
+        values.extend([unit.unit_title, unit.source_file, unit.markdown_content])
+    return values
+
+
+def _hydrate_course_page_units(bundle: CoursePageBundle) -> None:
+    source_dir = _resolve_curriculum_session(bundle.source_session_dir)
+    for unit in bundle.units:
+        exact_path = source_dir / Path(unit.source_file).name
+        fallback_path = source_dir / safe_curriculum_filename(unit.source_file)
+        if exact_path.exists():
+            unit.markdown_content = exact_path.read_text(encoding="utf-8")
+        elif fallback_path.exists():
+            unit.markdown_content = fallback_path.read_text(encoding="utf-8")
+        elif not unit.markdown_content:
+            raise FileNotFoundError(
+                f"Could not find source markdown file {unit.source_file!r} "
+                f"in {source_dir}"
+            )
 
 
 def _extract_urls(text: str) -> set[str]:
@@ -460,6 +496,495 @@ def _build_quiz_html(bundle: QuizBundle) -> str:
 """.format(
         title=html.escape(bundle.quiz_title),
         nav="".join(nav_items),
+        sections="".join(sections),
+    )
+
+
+def _format_markdown_inline(text: str) -> str:
+    escaped = html.escape(text)
+    escaped = re.sub(r"`([^`]+)`", r"<code>\1</code>", escaped)
+    escaped = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", escaped)
+    escaped = re.sub(r"\*([^*]+)\*", r"<em>\1</em>", escaped)
+
+    def link_replacer(match: re.Match[str]) -> str:
+        label = match.group(1)
+        url = match.group(2)
+        if not url.startswith(("http://", "https://")):
+            return match.group(0)
+        return (
+            f"<a href=\"{html.escape(url, quote=True)}\" "
+            "target=\"_blank\" rel=\"noopener noreferrer\">"
+            f"{label}</a>"
+        )
+
+    return re.sub(r"\[([^\]]+)\]\((https?://[^)\s]+)\)", link_replacer, escaped)
+
+
+def _render_markdown_to_html(markdown_text: str) -> str:
+    lines = markdown_text.splitlines()
+    html_lines: list[str] = []
+    paragraph_lines: list[str] = []
+    list_type: str | None = None
+    in_code_block = False
+    code_lines: list[str] = []
+
+    def flush_paragraph() -> None:
+        if paragraph_lines:
+            paragraph = " ".join(line.strip() for line in paragraph_lines)
+            html_lines.append(f"<p>{_format_markdown_inline(paragraph)}</p>")
+            paragraph_lines.clear()
+
+    def flush_list() -> None:
+        nonlocal list_type
+        if list_type:
+            html_lines.append(f"</{list_type}>")
+            list_type = None
+
+    def open_list(next_type: str) -> None:
+        nonlocal list_type
+        if list_type != next_type:
+            flush_list()
+            html_lines.append(f"<{next_type}>")
+            list_type = next_type
+
+    for line in lines:
+        stripped = line.strip()
+
+        if stripped.startswith("```"):
+            if in_code_block:
+                html_lines.append(
+                    "<pre><code>"
+                    + html.escape("\n".join(code_lines))
+                    + "</code></pre>"
+                )
+                code_lines.clear()
+                in_code_block = False
+            else:
+                flush_paragraph()
+                flush_list()
+                in_code_block = True
+            continue
+
+        if in_code_block:
+            code_lines.append(line)
+            continue
+
+        if not stripped:
+            flush_paragraph()
+            flush_list()
+            continue
+
+        heading_match = re.match(r"^(#{1,4})\s+(.+)$", stripped)
+        if heading_match:
+            flush_paragraph()
+            flush_list()
+            level = min(len(heading_match.group(1)) + 1, 5)
+            text = _format_markdown_inline(heading_match.group(2))
+            html_lines.append(f"<h{level}>{text}</h{level}>")
+            continue
+
+        unordered_match = re.match(r"^[-*]\s+(.+)$", stripped)
+        if unordered_match:
+            flush_paragraph()
+            open_list("ul")
+            html_lines.append(f"<li>{_format_markdown_inline(unordered_match.group(1))}</li>")
+            continue
+
+        ordered_match = re.match(r"^\d+[.)]\s+(.+)$", stripped)
+        if ordered_match:
+            flush_paragraph()
+            open_list("ol")
+            html_lines.append(f"<li>{_format_markdown_inline(ordered_match.group(1))}</li>")
+            continue
+
+        quote_match = re.match(r"^>\s?(.+)$", stripped)
+        if quote_match:
+            flush_paragraph()
+            flush_list()
+            html_lines.append(
+                f"<blockquote>{_format_markdown_inline(quote_match.group(1))}</blockquote>"
+            )
+            continue
+
+        paragraph_lines.append(line)
+
+    if in_code_block:
+        html_lines.append(
+            "<pre><code>" + html.escape("\n".join(code_lines)) + "</code></pre>"
+        )
+    flush_paragraph()
+    flush_list()
+    return "\n".join(html_lines)
+
+
+def _build_course_page_html(bundle: CoursePageBundle) -> str:
+    nav_items: list[str] = []
+    module_items: list[str] = []
+    sections: list[str] = []
+
+    for unit_index, unit in enumerate(bundle.units):
+        unit_id = f"unit-{unit_index}"
+        active_class = " active" if unit_index == 0 else ""
+        hidden_attr = "" if unit_index == 0 else " hidden"
+        nav_items.append(
+            "<button type=\"button\" "
+            f"class=\"unit-link{active_class}\" data-target=\"{unit_id}\">"
+            "<span class=\"unit-number\">{number:02d}</span>"
+            "<span>{title}</span>"
+            "</button>".format(
+                number=unit_index + 1,
+                title=html.escape(unit.unit_title),
+            )
+        )
+        module_items.append(
+            "<li>"
+            "<button type=\"button\" class=\"module-button\" data-target=\"{unit_id}\">"
+            "<span>{number:02d}</span>"
+            "<strong>{title}</strong>"
+            "<small>{source}</small>"
+            "</button>"
+            "</li>".format(
+                unit_id=unit_id,
+                number=unit_index + 1,
+                title=html.escape(unit.unit_title),
+                source=html.escape(unit.source_file),
+            )
+        )
+        sections.append(
+            "<article id=\"{unit_id}\" class=\"lesson-panel\"{hidden}>"
+            "<header class=\"lesson-header\">"
+            "<p>{source}</p>"
+            "<h2>{title}</h2>"
+            "</header>"
+            "<div class=\"lesson-body\">{body}</div>"
+            "</article>".format(
+                unit_id=unit_id,
+                hidden=hidden_attr,
+                source=html.escape(unit.source_file),
+                title=html.escape(unit.unit_title),
+                body=_render_markdown_to_html(unit.markdown_content),
+            )
+        )
+
+    return """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{title}</title>
+  <style>
+    :root {{
+      color-scheme: light;
+      --page: #f5f7fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #64748b;
+      --line: #d7dee9;
+      --nav: #243447;
+      --nav-muted: #cbd5e1;
+      --accent: #2563eb;
+      --accent-soft: #e8f0ff;
+      --success: #0f766e;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }}
+    .app-shell {{
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+    }}
+    .sidebar {{
+      background: var(--nav);
+      color: white;
+      padding: 22px 16px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+    }}
+    .brand {{
+      margin: 0 0 18px;
+      font-size: 0.9rem;
+      color: var(--nav-muted);
+      text-transform: uppercase;
+      letter-spacing: 0;
+      font-weight: 700;
+    }}
+    .dashboard-link {{
+      display: block;
+      margin-bottom: 16px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 8px;
+      color: white;
+      text-decoration: none;
+      font-weight: 800;
+    }}
+    .dashboard-link:hover {{
+      background: rgba(255,255,255,0.12);
+    }}
+    .unit-nav {{
+      display: grid;
+      gap: 8px;
+    }}
+    .unit-link {{
+      width: 100%;
+      min-height: 44px;
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      padding: 9px 10px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 8px;
+      background: transparent;
+      color: white;
+      text-align: left;
+      cursor: pointer;
+    }}
+    .unit-link span:last-child {{
+      overflow-wrap: anywhere;
+    }}
+    .unit-link.active {{
+      background: white;
+      color: var(--nav);
+      border-color: white;
+      font-weight: 700;
+    }}
+    .unit-number {{
+      color: inherit;
+      opacity: 0.75;
+      font-variant-numeric: tabular-nums;
+    }}
+    .main {{
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }}
+    .topbar {{
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      padding: 18px clamp(18px, 4vw, 38px);
+    }}
+    .topbar-row {{
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }}
+    .topbar-dashboard-link {{
+      flex: 0 0 auto;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 800;
+      background: white;
+    }}
+    .topbar-dashboard-link:hover {{
+      background: var(--accent-soft);
+    }}
+    .topbar p {{
+      margin: 6px 0 0;
+      color: var(--muted);
+      max-width: 860px;
+    }}
+    h1 {{
+      margin: 0;
+      font-size: clamp(1.45rem, 3vw, 2.2rem);
+      letter-spacing: 0;
+    }}
+    .content-grid {{
+      display: grid;
+      grid-template-columns: minmax(220px, 310px) minmax(0, 1fr);
+      gap: 22px;
+      padding: 22px clamp(18px, 4vw, 38px) 42px;
+      align-items: start;
+    }}
+    .modules {{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }}
+    .modules h2 {{
+      margin: 0;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+      font-size: 1rem;
+      letter-spacing: 0;
+    }}
+    .module-list {{
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }}
+    .module-button {{
+      width: 100%;
+      min-height: 68px;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 8px;
+      padding: 12px 16px;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: white;
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+    }}
+    .module-button:hover {{
+      background: var(--accent-soft);
+    }}
+    .module-button strong, .module-button small {{
+      display: block;
+      overflow-wrap: anywhere;
+    }}
+    .module-button span {{
+      color: var(--success);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }}
+    .module-button small {{
+      margin-top: 3px;
+      color: var(--muted);
+    }}
+    .lesson-panel {{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }}
+    .lesson-header {{
+      padding: clamp(18px, 3vw, 30px);
+      border-bottom: 1px solid var(--line);
+      background: #fbfcff;
+    }}
+    .lesson-header p {{
+      margin: 0 0 5px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }}
+    .lesson-header h2 {{
+      margin: 0;
+      font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+      letter-spacing: 0;
+    }}
+    .lesson-body {{
+      padding: clamp(18px, 3vw, 30px);
+      max-width: 880px;
+    }}
+    .lesson-body h2, .lesson-body h3, .lesson-body h4, .lesson-body h5 {{
+      margin: 1.3em 0 0.45em;
+      letter-spacing: 0;
+      line-height: 1.25;
+    }}
+    .lesson-body h2:first-child, .lesson-body h3:first-child {{
+      margin-top: 0;
+    }}
+    .lesson-body p, .lesson-body li {{
+      font-size: 1rem;
+    }}
+    .lesson-body a {{
+      color: var(--accent);
+      font-weight: 700;
+    }}
+    .lesson-body blockquote {{
+      margin: 16px 0;
+      padding: 12px 14px;
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      color: #243447;
+    }}
+    .lesson-body pre {{
+      overflow: auto;
+      padding: 14px;
+      border-radius: 8px;
+      background: #111827;
+      color: #e5e7eb;
+    }}
+    .lesson-body code {{
+      padding: 0.08rem 0.25rem;
+      border-radius: 4px;
+      background: #eef2f7;
+    }}
+    .lesson-body pre code {{
+      padding: 0;
+      background: transparent;
+    }}
+    @media (max-width: 980px) {{
+      .app-shell {{ grid-template-columns: 1fr; }}
+      .sidebar {{
+        position: static;
+        height: auto;
+      }}
+      .unit-nav {{
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      }}
+      .topbar-row {{
+        display: grid;
+      }}
+      .content-grid {{ grid-template-columns: 1fr; }}
+    }}
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <p class="brand">Course Navigation</p>
+      <a class="dashboard-link" href="../index.html">Dashboard</a>
+      <nav class="unit-nav" aria-label="Course units">{nav}</nav>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-row">
+          <div>
+            <h1>{title}</h1>
+            <p>{summary}</p>
+          </div>
+          <a class="topbar-dashboard-link" href="../index.html">Dashboard</a>
+        </div>
+      </header>
+      <div class="content-grid">
+        <section class="modules" aria-label="Modules">
+          <h2>Modules</h2>
+          <ol class="module-list">{modules}</ol>
+        </section>
+        <section aria-label="Lesson content">{sections}</section>
+      </div>
+    </main>
+  </div>
+  <script>
+    const buttons = document.querySelectorAll("[data-target]");
+    const navButtons = document.querySelectorAll(".unit-link");
+    const lessons = document.querySelectorAll(".lesson-panel");
+
+    function showLesson(targetId) {{
+      lessons.forEach((lesson) => lesson.hidden = lesson.id !== targetId);
+      navButtons.forEach((button) => {{
+        button.classList.toggle("active", button.dataset.target === targetId);
+      }});
+      document.getElementById(targetId)?.scrollIntoView({{ behavior: "smooth", block: "start" }});
+    }}
+
+    buttons.forEach((button) => {{
+      button.addEventListener("click", () => showLesson(button.dataset.target));
+    }});
+  </script>
+</body>
+</html>
+""".format(
+        title=html.escape(bundle.course_title),
+        summary=html.escape(bundle.course_summary),
+        nav="".join(nav_items),
+        modules="".join(module_items),
         sections="".join(sections),
     )
 
@@ -870,6 +1395,18 @@ def save_curriculum_bundle_callback(
             "Those files were saved with '[Resources not verified - use caution]' "
             "in the title and a warning note near the top."
         )
+    try:
+        dashboard_result = refresh_canvas_dashboard(
+            agent_name="dashboard_manager_agent"
+        )
+        callback_context.state["generated_dashboard_report"] = (
+            f"Dashboard refreshed at {dashboard_result['dashboard_path']} "
+            f"with {dashboard_result['course_count']} course card(s)."
+        )
+    except (OSError, ValueError) as exc:
+        callback_context.state["generated_dashboard_report"] = (
+            f"Dashboard refresh failed after curriculum save: {exc}"
+        )
     return Content()
 
 
@@ -919,6 +1456,7 @@ def save_quiz_bundle_callback(
         "quiz.html",
         quiz_html,
         session_dir=bundle.source_session_dir,
+        agent_name="quiz_generator_agent",
     )
     quiz_path = f"{bundle.source_session_dir}/quiz.html"
     callback_context.state["generated_quiz_html"] = quiz_path
@@ -933,5 +1471,104 @@ def save_quiz_bundle_callback(
         output_summary="Quiz bundle passed guardrail scan.",
         success=True,
         metadata={"unit_count": len(bundle.units), "quiz_path": quiz_path},
+    )
+    return Content()
+
+
+def save_course_page_bundle_callback(
+    callback_context: CallbackContext,
+) -> Content:
+    raw_bundle = callback_context.state.get("course_page_bundle")
+    if not raw_bundle:
+        log_tool_call(
+            tool_name="guardrail_check",
+            agent_name=_agent_name(callback_context, "course_page_generator_agent"),
+            input_summary="course_page_bundle missing",
+            output_summary="No course page bundle was available to save.",
+            success=False,
+            error_category="missing_course_page_bundle",
+        )
+        callback_context.state["generated_course_page_report"] = (
+            "No course page bundle was available to save."
+        )
+        return Content()
+
+    bundle = _normalize_course_page_bundle(raw_bundle)
+    try:
+        _hydrate_course_page_units(bundle)
+    except (OSError, ValueError) as exc:
+        callback_context.state["generated_course_page_report"] = (
+            "Course page generation failed because one or more source unit files "
+            f"could not be loaded: {exc}"
+        )
+        log_tool_call(
+            tool_name="file_io.load_course_page_source_files",
+            agent_name=_agent_name(callback_context, "course_page_generator_agent"),
+            input_summary=bundle.source_session_dir,
+            output_summary=str(exc),
+            success=False,
+            error_category="file_io_error",
+            error_message=str(exc),
+            metadata={"unit_count": len(bundle.units)},
+        )
+        return Content()
+
+    violations = find_many_guardrail_violations(_course_page_guardrail_values(bundle))
+    if violations:
+        formatted_violations = format_guardrail_violations(violations)
+        callback_context.state["guardrail_blocked"] = True
+        callback_context.state["guardrail_violations_report"] = formatted_violations
+        callback_context.state["generated_course_page_report"] = (
+            "Course page generation was blocked by guardrails. "
+            "No course page file was saved.\n\n"
+            f"{REFUSAL_MESSAGE}\n\n"
+            "Detected policy categories:\n"
+            f"{formatted_violations}"
+        )
+        log_tool_call(
+            tool_name="guardrail_check",
+            agent_name=_agent_name(callback_context, "course_page_generator_agent"),
+            input_summary=bundle.course_title,
+            output_summary=formatted_violations,
+            success=False,
+            error_category="guardrail_violation",
+            metadata={"violation_count": len(violations)},
+        )
+        return Content()
+
+    course_html = _build_course_page_html(bundle)
+    save_text_file(
+        "course_page.html",
+        course_html,
+        session_dir=bundle.source_session_dir,
+        agent_name="course_page_generator_agent",
+    )
+    course_page_path = f"{bundle.source_session_dir}/course_page.html"
+    callback_context.state["generated_course_page_html"] = course_page_path
+    callback_context.state["generated_course_page_report"] = (
+        f"Course page saved to {course_page_path}. It displays "
+        f"{len(bundle.units)} unit lesson section(s) in a Canvas-style layout."
+    )
+    try:
+        dashboard_result = refresh_canvas_dashboard(
+            agent_name="dashboard_manager_agent"
+        )
+        callback_context.state["generated_course_page_report"] += (
+            f" Dashboard refreshed at {dashboard_result['dashboard_path']}."
+        )
+    except (OSError, ValueError) as exc:
+        callback_context.state["generated_course_page_report"] += (
+            f" Dashboard refresh failed: {exc}"
+        )
+    log_tool_call(
+        tool_name="guardrail_check",
+        agent_name=_agent_name(callback_context, "course_page_generator_agent"),
+        input_summary=bundle.course_title,
+        output_summary="Course page bundle passed guardrail scan.",
+        success=True,
+        metadata={
+            "unit_count": len(bundle.units),
+            "course_page_path": course_page_path,
+        },
     )
     return Content()

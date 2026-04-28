@@ -99,3 +99,26 @@ class QuizBundle(BaseModel):
         min_length=1,
         description="One quiz section per selected unit.",
     )
+
+
+class CoursePageUnit(BaseModel):
+    unit_title: str = Field(description="Title of the unit shown in the course page.")
+    source_file: str = Field(description="Source markdown filename for this unit.")
+    markdown_content: str = Field(
+        default="",
+        description="Optional markdown content; renderer reloads source files when empty.",
+    )
+
+
+class CoursePageBundle(BaseModel):
+    source_session_dir: str = Field(
+        description="Curriculum session directory used to build the course page."
+    )
+    course_title: str = Field(description="Title shown at the top of the course page.")
+    course_summary: str = Field(
+        description="Brief summary of what the course page contains."
+    )
+    units: List[CoursePageUnit] = Field(
+        min_length=1,
+        description="One course page section per selected unit markdown file.",
+    )

@@ -1,7 +1,9 @@
 import json
+import os
 import re
 import time
 from datetime import datetime, timezone
+from html import escape
 from pathlib import Path
 
 from .tool_logging import elapsed_ms, log_tool_call, refresh_usage_report
@@ -9,6 +11,7 @@ from .tool_logging import elapsed_ms, log_tool_call, refresh_usage_report
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 MEMORY_DIR = PACKAGE_DIR / "long_term_memory"
+CHAT_URL = "http://localhost:8000"
 
 
 def _ensure_memory_dir() -> Path:
@@ -161,6 +164,11 @@ def load_curriculum_units_for_quiz(
             }
             for path in unit_files
         ]
+        if not units:
+            raise FileNotFoundError(
+                f"No unit_*.md files found for session_hint={session_hint!r} "
+                f"and unit_filter={unit_filter!r}"
+            )
         result = {
             "source_session_dir": _relative_memory_path(session_dir),
             "unit_count": len(units),
@@ -191,6 +199,575 @@ def load_curriculum_units_for_quiz(
             "filenames": [unit["filename"] for unit in units],
         },
     )
+    return json.dumps(result, ensure_ascii=False)
+
+
+def load_curriculum_units_for_course_page(
+    session_hint: str | None = None,
+    unit_filter: str | None = None,
+) -> str:
+    """Load generated unit markdown files for course page creation as JSON."""
+    start_time = time.perf_counter()
+    try:
+        session_dir = _resolve_curriculum_session(session_hint)
+        unit_files = sorted(session_dir.glob("unit_*.md"))
+        if unit_filter:
+            unit_files = [
+                path
+                for path in unit_files
+                if _unit_matches_filter(path, unit_filter)
+            ]
+
+        units = [
+            {
+                "filename": path.name,
+                "content": path.read_text(encoding="utf-8"),
+            }
+            for path in unit_files
+        ]
+        if not units:
+            raise FileNotFoundError(
+                f"No unit_*.md files found for session_hint={session_hint!r} "
+                f"and unit_filter={unit_filter!r}"
+            )
+        result = {
+            "source_session_dir": _relative_memory_path(session_dir),
+            "unit_count": len(units),
+            "units": units,
+        }
+    except (OSError, FileNotFoundError, ValueError) as exc:
+        log_tool_call(
+            tool_name="file_io.load_curriculum_units_for_course_page",
+            agent_name="course_page_generator_agent",
+            input_summary=f"session_hint={session_hint}; unit_filter={unit_filter}",
+            success=False,
+            latency_ms=elapsed_ms(start_time),
+            error_category="file_io_error",
+            error_message=str(exc),
+        )
+        raise
+
+    log_tool_call(
+        tool_name="file_io.load_curriculum_units_for_course_page",
+        agent_name="course_page_generator_agent",
+        input_summary=f"session_hint={session_hint}; unit_filter={unit_filter}",
+        output_summary=f"Loaded {len(units)} unit files from {result['source_session_dir']}",
+        success=True,
+        latency_ms=elapsed_ms(start_time),
+        metadata={
+            "source_session_dir": result["source_session_dir"],
+            "unit_count": len(units),
+            "filenames": [unit["filename"] for unit in units],
+        },
+    )
+    return json.dumps(result, ensure_ascii=False)
+
+
+def _extract_markdown_title(content: str, fallback: str) -> str:
+    for line in content.splitlines():
+        match = re.match(r"^#\s+(.+)$", line.strip())
+        if match:
+            return match.group(1).strip()
+    return fallback
+
+
+def _friendly_session_title(session_dir: Path, unit_files: list[Path]) -> str:
+    if unit_files:
+        first_content = unit_files[0].read_text(encoding="utf-8")
+        first_title = _extract_markdown_title(first_content, unit_files[0].stem)
+        cleaned = re.sub(r"^Unit\s+\d+\s*:\s*", "", first_title, flags=re.I)
+        cleaned = re.sub(r"\s*\[Resources not verified - use caution\]\s*", "", cleaned)
+        if cleaned:
+            return cleaned
+
+    name = re.sub(r"^\d{8}_\d{6}_", "", session_dir.name)
+    return name.replace("_", " ").strip().title() or "Saved Course"
+
+
+def _format_markdown_inline(text: str) -> str:
+    escaped = escape(text)
+    escaped = re.sub(r"`([^`]+)`", r"<code>\1</code>", escaped)
+    escaped = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", escaped)
+
+    def link_replacer(match: re.Match[str]) -> str:
+        label = match.group(1)
+        url = match.group(2)
+        return (
+            f"<a href=\"{escape(url, quote=True)}\" "
+            "target=\"_blank\" rel=\"noopener noreferrer\">"
+            f"{label}</a>"
+        )
+
+    return re.sub(r"\[([^\]]+)\]\((https?://[^)\s]+)\)", link_replacer, escaped)
+
+
+def _render_markdown_to_html(markdown_text: str) -> str:
+    html_lines: list[str] = []
+    paragraph_lines: list[str] = []
+    list_type: str | None = None
+    in_code_block = False
+    code_lines: list[str] = []
+
+    def flush_paragraph() -> None:
+        if paragraph_lines:
+            paragraph = " ".join(line.strip() for line in paragraph_lines)
+            html_lines.append(f"<p>{_format_markdown_inline(paragraph)}</p>")
+            paragraph_lines.clear()
+
+    def flush_list() -> None:
+        nonlocal list_type
+        if list_type:
+            html_lines.append(f"</{list_type}>")
+            list_type = None
+
+    def open_list(next_type: str) -> None:
+        nonlocal list_type
+        if list_type != next_type:
+            flush_list()
+            html_lines.append(f"<{next_type}>")
+            list_type = next_type
+
+    for line in markdown_text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("```"):
+            if in_code_block:
+                html_lines.append(
+                    "<pre><code>"
+                    + escape("\n".join(code_lines))
+                    + "</code></pre>"
+                )
+                code_lines.clear()
+                in_code_block = False
+            else:
+                flush_paragraph()
+                flush_list()
+                in_code_block = True
+            continue
+
+        if in_code_block:
+            code_lines.append(line)
+            continue
+
+        if not stripped:
+            flush_paragraph()
+            flush_list()
+            continue
+
+        heading_match = re.match(r"^(#{1,4})\s+(.+)$", stripped)
+        if heading_match:
+            flush_paragraph()
+            flush_list()
+            level = min(len(heading_match.group(1)) + 1, 5)
+            html_lines.append(
+                f"<h{level}>{_format_markdown_inline(heading_match.group(2))}</h{level}>"
+            )
+            continue
+
+        unordered_match = re.match(r"^[-*]\s+(.+)$", stripped)
+        if unordered_match:
+            flush_paragraph()
+            open_list("ul")
+            html_lines.append(f"<li>{_format_markdown_inline(unordered_match.group(1))}</li>")
+            continue
+
+        ordered_match = re.match(r"^\d+[.)]\s+(.+)$", stripped)
+        if ordered_match:
+            flush_paragraph()
+            open_list("ol")
+            html_lines.append(f"<li>{_format_markdown_inline(ordered_match.group(1))}</li>")
+            continue
+
+        quote_match = re.match(r"^>\s?(.+)$", stripped)
+        if quote_match:
+            flush_paragraph()
+            flush_list()
+            html_lines.append(
+                f"<blockquote>{_format_markdown_inline(quote_match.group(1))}</blockquote>"
+            )
+            continue
+
+        paragraph_lines.append(line)
+
+    if in_code_block:
+        html_lines.append(
+            "<pre><code>" + escape("\n".join(code_lines)) + "</code></pre>"
+        )
+    flush_paragraph()
+    flush_list()
+    return "\n".join(html_lines)
+
+
+def _build_static_course_page_html(
+    course_title: str,
+    course_summary: str,
+    units: list[dict[str, str]],
+) -> str:
+    nav_items: list[str] = []
+    module_items: list[str] = []
+    sections: list[str] = []
+    for index, unit in enumerate(units):
+        unit_id = f"unit-{index}"
+        active_class = " active" if index == 0 else ""
+        hidden_attr = "" if index == 0 else " hidden"
+        nav_items.append(
+            "<button type=\"button\" class=\"unit-link{active}\" data-target=\"{unit_id}\">"
+            "<span class=\"unit-number\">{number:02d}</span><span>{title}</span>"
+            "</button>".format(
+                active=active_class,
+                unit_id=unit_id,
+                number=index + 1,
+                title=escape(unit["title"]),
+            )
+        )
+        module_items.append(
+            "<li><button type=\"button\" class=\"module-button\" data-target=\"{unit_id}\">"
+            "<span>{number:02d}</span><strong>{title}</strong><small>{source}</small>"
+            "</button></li>".format(
+                unit_id=unit_id,
+                number=index + 1,
+                title=escape(unit["title"]),
+                source=escape(unit["filename"]),
+            )
+        )
+        sections.append(
+            "<article id=\"{unit_id}\" class=\"lesson-panel\"{hidden}>"
+            "<header class=\"lesson-header\"><p>{source}</p><h2>{title}</h2></header>"
+            "<div class=\"lesson-body\">{body}</div></article>".format(
+                unit_id=unit_id,
+                hidden=hidden_attr,
+                source=escape(unit["filename"]),
+                title=escape(unit["title"]),
+                body=_render_markdown_to_html(unit["content"]),
+            )
+        )
+
+    return """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{title}</title>
+  <style>
+    :root {{
+      color-scheme: light;
+      --page: #f5f7fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #64748b;
+      --line: #d7dee9;
+      --nav: #243447;
+      --nav-muted: #cbd5e1;
+      --accent: #2563eb;
+      --accent-soft: #e8f0ff;
+      --success: #0f766e;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{ margin: 0; background: var(--page); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.55; }}
+    .app-shell {{ min-height: 100vh; display: grid; grid-template-columns: 260px minmax(0, 1fr); }}
+    .sidebar {{ background: var(--nav); color: white; padding: 22px 16px; position: sticky; top: 0; height: 100vh; overflow: auto; }}
+    .brand {{ margin: 0 0 18px; font-size: 0.9rem; color: var(--nav-muted); text-transform: uppercase; letter-spacing: 0; font-weight: 700; }}
+    .dashboard-link {{ display: block; margin-bottom: 16px; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.18); border-radius: 8px; color: white; text-decoration: none; font-weight: 800; }}
+    .dashboard-link:hover {{ background: rgba(255,255,255,0.12); }}
+    .unit-nav {{ display: grid; gap: 8px; }}
+    .unit-link {{ width: 100%; min-height: 44px; display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 8px; align-items: center; padding: 9px 10px; border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; background: transparent; color: white; text-align: left; cursor: pointer; }}
+    .unit-link span:last-child, .module-button strong, .module-button small {{ overflow-wrap: anywhere; }}
+    .unit-link.active {{ background: white; color: var(--nav); border-color: white; font-weight: 700; }}
+    .unit-number, .module-button span {{ font-variant-numeric: tabular-nums; }}
+    .main {{ min-width: 0; display: grid; grid-template-rows: auto 1fr; }}
+    .topbar {{ background: var(--panel); border-bottom: 1px solid var(--line); padding: 18px clamp(18px, 4vw, 38px); }}
+    .topbar-row {{ display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }}
+    .topbar-dashboard-link {{ flex: 0 0 auto; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--accent); text-decoration: none; font-weight: 800; background: white; }}
+    .topbar-dashboard-link:hover {{ background: var(--accent-soft); }}
+    .topbar p {{ margin: 6px 0 0; color: var(--muted); max-width: 860px; }}
+    h1 {{ margin: 0; font-size: clamp(1.45rem, 3vw, 2.2rem); letter-spacing: 0; }}
+    .content-grid {{ display: grid; grid-template-columns: minmax(220px, 310px) minmax(0, 1fr); gap: 22px; padding: 22px clamp(18px, 4vw, 38px) 42px; align-items: start; }}
+    .modules, .lesson-panel {{ background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }}
+    .modules h2 {{ margin: 0; padding: 16px 18px; border-bottom: 1px solid var(--line); font-size: 1rem; letter-spacing: 0; }}
+    .module-list {{ margin: 0; padding: 0; list-style: none; }}
+    .module-button {{ width: 100%; min-height: 68px; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; padding: 12px 16px; border: 0; border-bottom: 1px solid var(--line); background: white; color: var(--ink); text-align: left; cursor: pointer; }}
+    .module-button:hover {{ background: var(--accent-soft); }}
+    .module-button span {{ color: var(--success); font-weight: 800; }}
+    .module-button strong, .module-button small {{ display: block; }}
+    .module-button small {{ margin-top: 3px; color: var(--muted); }}
+    .lesson-header {{ padding: clamp(18px, 3vw, 30px); border-bottom: 1px solid var(--line); background: #fbfcff; }}
+    .lesson-header p {{ margin: 0 0 5px; color: var(--muted); font-size: 0.92rem; }}
+    .lesson-header h2 {{ margin: 0; font-size: clamp(1.25rem, 2.2vw, 1.75rem); letter-spacing: 0; }}
+    .lesson-body {{ padding: clamp(18px, 3vw, 30px); max-width: 880px; }}
+    .lesson-body h2, .lesson-body h3, .lesson-body h4, .lesson-body h5 {{ margin: 1.3em 0 0.45em; letter-spacing: 0; line-height: 1.25; }}
+    .lesson-body h2:first-child, .lesson-body h3:first-child {{ margin-top: 0; }}
+    .lesson-body a {{ color: var(--accent); font-weight: 700; }}
+    .lesson-body blockquote {{ margin: 16px 0; padding: 12px 14px; border-left: 4px solid var(--accent); background: var(--accent-soft); color: #243447; }}
+    .lesson-body pre {{ overflow: auto; padding: 14px; border-radius: 8px; background: #111827; color: #e5e7eb; }}
+    .lesson-body code {{ padding: 0.08rem 0.25rem; border-radius: 4px; background: #eef2f7; }}
+    .lesson-body pre code {{ padding: 0; background: transparent; }}
+    @media (max-width: 980px) {{ .app-shell {{ grid-template-columns: 1fr; }} .sidebar {{ position: static; height: auto; }} .unit-nav {{ grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }} .topbar-row {{ display: grid; }} .content-grid {{ grid-template-columns: 1fr; }} }}
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar"><p class="brand">Course Navigation</p><a class="dashboard-link" href="../index.html">Dashboard</a><nav class="unit-nav" aria-label="Course units">{nav}</nav></aside>
+    <main class="main">
+      <header class="topbar"><div class="topbar-row"><div><h1>{title}</h1><p>{summary}</p></div><a class="topbar-dashboard-link" href="../index.html">Dashboard</a></div></header>
+      <div class="content-grid"><section class="modules" aria-label="Modules"><h2>Modules</h2><ol class="module-list">{modules}</ol></section><section aria-label="Lesson content">{sections}</section></div>
+    </main>
+  </div>
+  <script>
+    const buttons = document.querySelectorAll("[data-target]");
+    const navButtons = document.querySelectorAll(".unit-link");
+    const lessons = document.querySelectorAll(".lesson-panel");
+    function showLesson(targetId) {{
+      lessons.forEach((lesson) => lesson.hidden = lesson.id !== targetId);
+      navButtons.forEach((button) => button.classList.toggle("active", button.dataset.target === targetId));
+      document.getElementById(targetId)?.scrollIntoView({{ behavior: "smooth", block: "start" }});
+    }}
+    buttons.forEach((button) => button.addEventListener("click", () => showLesson(button.dataset.target)));
+  </script>
+</body>
+</html>
+""".format(
+        title=escape(course_title),
+        summary=escape(course_summary),
+        nav="".join(nav_items),
+        modules="".join(module_items),
+        sections="".join(sections),
+    )
+
+
+def _ensure_course_page_for_session(session_dir: Path) -> dict[str, object]:
+    unit_files = sorted(session_dir.glob("unit_*.md"))
+    if not unit_files:
+        raise FileNotFoundError(f"No unit files found in {session_dir}")
+
+    units = []
+    for path in unit_files:
+        content = path.read_text(encoding="utf-8")
+        units.append(
+            {
+                "filename": path.name,
+                "title": _extract_markdown_title(content, path.stem.replace("_", " ").title()),
+                "content": content,
+            }
+        )
+
+    course_title = _friendly_session_title(session_dir, unit_files)
+    summary = f"{len(units)} unit lesson set saved in {session_dir.name}."
+    page_path = session_dir / "course_page.html"
+    page_path.write_text(
+        _build_static_course_page_html(course_title, summary, units),
+        encoding="utf-8",
+    )
+
+    return {
+        "title": course_title,
+        "session_name": session_dir.name,
+        "unit_count": len(units),
+        "course_page": page_path,
+        "updated_at": datetime.fromtimestamp(
+            session_dir.stat().st_mtime,
+            tz=timezone.utc,
+        ).strftime("%Y-%m-%d"),
+    }
+
+
+def _build_agent_chat_html(chat_url: str) -> str:
+    return """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Chat</title>
+  <style>
+    * {{ box-sizing: border-box; }}
+    body {{ margin: 0; min-height: 100vh; background: #f3f5f8; color: #1f2937; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
+    header {{ min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px clamp(16px, 4vw, 34px); background: #ffffff; border-bottom: 1px solid #d8dee8; }}
+    h1 {{ margin: 0; font-size: 1.1rem; letter-spacing: 0; }}
+    a {{ color: #2563eb; font-weight: 800; text-decoration: none; }}
+    iframe {{ display: block; width: 100%; height: calc(100vh - 64px); border: 0; background: #ffffff; }}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Add project/lesson</h1>
+    <a href="{chat_url}" target="_blank" rel="noopener noreferrer">Open root agent chat</a>
+  </header>
+  <iframe src="{chat_url}" title="Root agent chat"></iframe>
+</body>
+</html>
+""".format(chat_url=escape(chat_url, quote=True))
+
+
+def _build_dashboard_html(courses: list[dict[str, object]], chat_url: str) -> str:
+    course_cards = []
+    for course in courses:
+        href = f"{course['session_name']}/course_page.html"
+        course_cards.append(
+            "<a class=\"course-card\" href=\"{href}\">"
+            "<span class=\"course-status\">Published</span>"
+            "<h2>{title}</h2>"
+            "<p>{unit_count} unit(s)</p>"
+            "<small>Updated {updated_at}</small>"
+            "</a>".format(
+                href=escape(str(href), quote=True),
+                title=escape(str(course["title"])),
+                unit_count=course["unit_count"],
+                updated_at=escape(str(course["updated_at"])),
+            )
+        )
+
+    return """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Course Dashboard</title>
+  <style>
+    :root {{
+      color-scheme: light;
+      --bg: #f3f5f8;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #667085;
+      --line: #d8dee8;
+      --nav: #243447;
+      --accent: #2563eb;
+      --accent-soft: #e8f0ff;
+      --green: #0f766e;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{ margin: 0; background: var(--bg); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
+    .shell {{ min-height: 100vh; display: grid; grid-template-columns: 240px minmax(0, 1fr); }}
+    aside {{ background: var(--nav); color: white; padding: 24px 18px; }}
+    aside h1 {{ margin: 0 0 24px; font-size: 1.1rem; letter-spacing: 0; }}
+    aside a {{ display: block; padding: 10px 12px; border-radius: 8px; color: white; text-decoration: none; }}
+    aside a.active, aside a:hover {{ background: rgba(255,255,255,0.12); }}
+    main {{ min-width: 0; }}
+    .topbar {{ background: var(--panel); border-bottom: 1px solid var(--line); padding: 24px clamp(18px, 4vw, 42px); }}
+    .topbar h2 {{ margin: 0; font-size: clamp(1.55rem, 3vw, 2.25rem); letter-spacing: 0; }}
+    .topbar p {{ margin: 6px 0 0; color: var(--muted); }}
+    .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; padding: 24px clamp(18px, 4vw, 42px) 42px; }}
+    .course-card, .add-card {{ min-height: 190px; display: flex; flex-direction: column; justify-content: space-between; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); text-decoration: none; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04); }}
+    .course-card:hover, .add-card:hover {{ border-color: var(--accent); box-shadow: 0 10px 24px rgba(16, 24, 40, 0.08); }}
+    .course-card h2, .add-card h2 {{ margin: 14px 0 8px; font-size: 1.12rem; letter-spacing: 0; overflow-wrap: anywhere; }}
+    .course-card p, .add-card p {{ margin: 0; color: var(--muted); }}
+    .course-card small {{ color: var(--muted); }}
+    .course-status {{ align-self: flex-start; padding: 4px 8px; border-radius: 999px; background: #ecfdf3; color: var(--green); font-size: 0.78rem; font-weight: 800; }}
+    .add-card {{ border-style: dashed; background: var(--accent-soft); }}
+    .plus {{ width: 44px; height: 44px; display: grid; place-items: center; border-radius: 8px; background: var(--accent); color: white; font-size: 1.8rem; line-height: 1; }}
+    @media (max-width: 760px) {{ .shell {{ grid-template-columns: 1fr; }} aside {{ display: flex; gap: 8px; align-items: center; justify-content: space-between; }} aside h1 {{ margin: 0; }} }}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <h1>Agentic Tutor</h1>
+      <nav aria-label="Dashboard navigation">
+        <a class="active" href="index.html">Dashboard</a>
+        <a href="agent_chat.html">Agent Chat</a>
+      </nav>
+    </aside>
+    <main>
+      <header class="topbar">
+        <h2>Dashboard</h2>
+        <p>Course cards are built from saved lessons in long-term memory.</p>
+      </header>
+      <section class="grid" aria-label="Courses">
+        <a class="add-card" href="agent_chat.html">
+          <span class="plus">+</span>
+          <div>
+            <h2>Add project/lesson</h2>
+            <p>Start a new curriculum with the root agent.</p>
+          </div>
+        </a>
+        {cards}
+      </section>
+    </main>
+  </div>
+</body>
+</html>
+""".format(
+        cards="".join(course_cards),
+    )
+
+
+def refresh_canvas_dashboard(agent_name: str = "dashboard_manager_agent") -> dict[str, object]:
+    """Create or refresh the Canvas-style dashboard and linked course pages."""
+    start_time = time.perf_counter()
+    memory_dir = _ensure_memory_dir()
+    chat_url = os.getenv("CURRICULUM_AGENT_CHAT_URL", CHAT_URL)
+    courses: list[dict[str, object]] = []
+    generated_course_pages = 0
+    try:
+        for session_dir in _list_curriculum_session_dirs():
+            if not list(session_dir.glob("unit_*.md")):
+                continue
+            page_path = session_dir / "course_page.html"
+            existed = page_path.exists()
+            course = _ensure_course_page_for_session(session_dir)
+            if not existed:
+                generated_course_pages += 1
+            courses.append(course)
+
+        dashboard_path = memory_dir / "index.html"
+        chat_page_path = memory_dir / "agent_chat.html"
+        chat_page_path.write_text(
+            _build_agent_chat_html(chat_url),
+            encoding="utf-8",
+        )
+        dashboard_path.write_text(
+            _build_dashboard_html(courses, chat_url),
+            encoding="utf-8",
+        )
+    except (OSError, ValueError) as exc:
+        log_tool_call(
+            tool_name="file_io.refresh_canvas_dashboard",
+            agent_name=agent_name,
+            input_summary="refresh dashboard",
+            success=False,
+            latency_ms=elapsed_ms(start_time),
+            error_category="file_io_error",
+            error_message=str(exc),
+        )
+        raise
+
+    result = {
+        "dashboard_path": _relative_memory_path(dashboard_path),
+        "chat_page_path": _relative_memory_path(chat_page_path),
+        "course_count": len(courses),
+        "generated_course_pages": generated_course_pages,
+        "chat_url": chat_url,
+        "courses": [
+            {
+                "title": course["title"],
+                "unit_count": course["unit_count"],
+                "path": f"tt/long_term_memory/{course['session_name']}/course_page.html",
+            }
+            for course in courses
+        ],
+    }
+    log_tool_call(
+        tool_name="file_io.refresh_canvas_dashboard",
+        agent_name=agent_name,
+        input_summary="refresh dashboard",
+        output_summary=(
+            f"Dashboard refreshed with {len(courses)} course cards at "
+            f"{result['dashboard_path']}"
+        ),
+        success=True,
+        latency_ms=elapsed_ms(start_time),
+        metadata={
+            "dashboard_path": result["dashboard_path"],
+            "chat_page_path": result["chat_page_path"],
+            "course_count": len(courses),
+            "generated_course_pages": generated_course_pages,
+            "chat_url": chat_url,
+        },
+    )
+    return result
+
+
+def refresh_canvas_dashboard_tool() -> str:
+    """Regenerate the Canvas-style main dashboard and linked course pages."""
+    result = refresh_canvas_dashboard(agent_name="dashboard_manager_agent")
     return json.dumps(result, ensure_ascii=False)
 
 
@@ -309,6 +886,7 @@ def save_text_file(
     filename: str,
     content: str,
     session_dir: str | None = None,
+    agent_name: str = "curriculum_writer_agent",
 ) -> str:
     """Save any curriculum-related text file into tt/long_term_memory."""
     start_time = time.perf_counter()
@@ -321,7 +899,7 @@ def save_text_file(
     except OSError as exc:
         log_tool_call(
             tool_name="file_io.save_text_file",
-            agent_name="curriculum_writer_agent",
+            agent_name=agent_name,
             input_summary=filename,
             success=False,
             latency_ms=elapsed_ms(start_time),
@@ -337,7 +915,7 @@ def save_text_file(
 
     log_tool_call(
         tool_name="file_io.save_text_file",
-        agent_name="curriculum_writer_agent",
+        agent_name=agent_name,
         input_summary=filename,
         output_summary=f"Saved text file to {file_path}",
         success=True,

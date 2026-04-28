@@ -11,13 +11,17 @@ from google.genai import types
 from .callbacks import (
     collect_verified_sources_callback,
     log_model_usage_callback,
+    save_course_page_bundle_callback,
     save_curriculum_bundle_callback,
     save_quiz_bundle_callback,
 )
 from .prompts import (
     CONTENT_GENERATOR_INSTRUCTION,
+    COURSE_PAGE_GENERATOR_INSTRUCTION,
+    COURSE_PAGE_REPORT_INSTRUCTION,
     CURRICULUM_DIRECTOR_INSTRUCTION,
     CURRICULUM_WRITER_INSTRUCTION,
+    DASHBOARD_MANAGER_INSTRUCTION,
     INTERVIEW_TRANSCRIPT_INSTRUCTION,
     INTERVIEWER_INSTRUCTION,
     MODULE_CRITIC_INSTRUCTION,
@@ -27,8 +31,13 @@ from .prompts import (
     USAGE_REPORT_INSTRUCTION,
     USER_PROFILE_EXTRACTOR_INSTRUCTION,
 )
-from .schemas import CurriculumBundle, QuizBundle
-from .tools import load_curriculum_units_for_quiz, refresh_usage_report_tool
+from .schemas import CoursePageBundle, CurriculumBundle, QuizBundle
+from .tools import (
+    load_curriculum_units_for_course_page,
+    load_curriculum_units_for_quiz,
+    refresh_canvas_dashboard_tool,
+    refresh_usage_report_tool,
+)
 
 MODEL = os.getenv("CURRICULUM_MODEL", os.getenv("MODEL", "gemini-2.5-flash"))
 RETRY_INITIAL_DELAY_SECS = int(os.getenv("CURRICULUM_RETRY_INITIAL_DELAY_SECS", "1"))
@@ -146,6 +155,51 @@ quiz_agent = SequentialAgent(
 )
 
 
+course_page_generator_agent = LlmAgent(
+    name="course_page_generator_agent",
+    model=MODEL,
+    description="Reads saved unit lessons and creates a structured course page bundle.",
+    instruction=COURSE_PAGE_GENERATOR_INSTRUCTION,
+    tools=[load_curriculum_units_for_course_page],
+    output_schema=CoursePageBundle,
+    output_key="course_page_bundle",
+    after_model_callback=log_model_usage_callback,
+    after_agent_callback=save_course_page_bundle_callback,
+    generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
+)
+
+
+course_page_report_agent = LlmAgent(
+    name="course_page_report_agent",
+    model=MODEL,
+    description="Reports where the generated HTML course page was saved.",
+    instruction=COURSE_PAGE_REPORT_INSTRUCTION,
+    after_model_callback=log_model_usage_callback,
+    generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
+)
+
+
+course_page_agent = SequentialAgent(
+    name="course_page_agent",
+    description="Generates a Canvas-style HTML course page from saved unit lesson files.",
+    sub_agents=[
+        course_page_generator_agent,
+        course_page_report_agent,
+    ],
+)
+
+
+dashboard_manager_agent = LlmAgent(
+    name="dashboard_manager_agent",
+    model=MODEL,
+    description="Maintains the Canvas-style dashboard that links all saved courses.",
+    instruction=DASHBOARD_MANAGER_INSTRUCTION,
+    tools=[refresh_canvas_dashboard_tool],
+    after_model_callback=log_model_usage_callback,
+    generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
+)
+
+
 usage_report_agent = LlmAgent(
     name="usage_report_agent",
     model=MODEL,
@@ -187,7 +241,13 @@ root_agent = Agent(
     model=MODEL,
     description="Routes learners into the intake interview and curriculum workflow.",
     instruction=ROOT_AGENT_INSTRUCTION,
-    sub_agents=[usage_report_agent, quiz_agent, interviewer_agent],
+    sub_agents=[
+        dashboard_manager_agent,
+        course_page_agent,
+        usage_report_agent,
+        quiz_agent,
+        interviewer_agent,
+    ],
     after_model_callback=log_model_usage_callback,
     generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
 )
