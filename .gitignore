@@ -35,6 +35,8 @@ output/
 reports/
 long_term_memory/
 tt/long_term_memory/
+tt/.adk/session.db
+tt/logs/
 
 # VS Code
 .vscode/

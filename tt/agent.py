@@ -5,11 +5,10 @@ from .compat import patch_aiohttp_connector_dns_error
 patch_aiohttp_connector_dns_error()
 
 from google.adk.agents import Agent, LlmAgent, SequentialAgent
-from google.adk.tools import google_search
+from google.adk.tools import AgentTool, google_search
 from google.genai import types
 
 from .callbacks import (
-    collect_verified_sources_callback,
     log_model_usage_callback,
     save_course_page_bundle_callback,
     save_curriculum_bundle_callback,
@@ -22,14 +21,12 @@ from .prompts import (
     CURRICULUM_DIRECTOR_INSTRUCTION,
     CURRICULUM_WRITER_INSTRUCTION,
     DASHBOARD_MANAGER_INSTRUCTION,
-    INTERVIEW_TRANSCRIPT_INSTRUCTION,
     INTERVIEWER_INSTRUCTION,
     MODULE_CRITIC_INSTRUCTION,
     QUIZ_GENERATOR_INSTRUCTION,
     QUIZ_REPORT_INSTRUCTION,
     ROOT_AGENT_INSTRUCTION,
     USAGE_REPORT_INSTRUCTION,
-    USER_PROFILE_EXTRACTOR_INSTRUCTION,
 )
 from .schemas import CoursePageBundle, CurriculumBundle, QuizBundle
 from .tools import (
@@ -37,6 +34,7 @@ from .tools import (
     load_curriculum_units_for_quiz,
     refresh_canvas_dashboard_tool,
     refresh_usage_report_tool,
+    store_learner_profile,
 )
 
 MODEL = os.getenv("CURRICULUM_MODEL", os.getenv("MODEL", "gemini-2.5-flash"))
@@ -51,28 +49,6 @@ RETRY_GENERATE_CONTENT_CONFIG = types.GenerateContentConfig(
         )
     )
 )
-
-interview_transcript_agent = LlmAgent(
-    name="interview_transcript_agent",
-    model=MODEL,
-    description="Builds a concise intake transcript from the learner interview.",
-    instruction=INTERVIEW_TRANSCRIPT_INSTRUCTION,
-    output_key="interview_transcript",
-    after_model_callback=log_model_usage_callback,
-    generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
-)
-
-
-profile_extractor_agent = LlmAgent(
-    name="profile_extractor_agent",
-    model=MODEL,
-    description="Extracts a structured learner profile from the intake transcript.",
-    instruction=USER_PROFILE_EXTRACTOR_INSTRUCTION,
-    output_key="user_profile_json",
-    after_model_callback=log_model_usage_callback,
-    generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
-)
-
 
 curriculum_director_agent = LlmAgent(
     name="curriculum_director_agent",
@@ -93,7 +69,6 @@ content_generator_agent = LlmAgent(
     tools=[google_search],
     output_key="research_packet",
     after_model_callback=log_model_usage_callback,
-    after_agent_callback=collect_verified_sources_callback,
     generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
 )
 
@@ -107,16 +82,6 @@ curriculum_writer_agent = LlmAgent(
     output_key="curriculum_bundle",
     after_model_callback=log_model_usage_callback,
     after_agent_callback=save_curriculum_bundle_callback,
-    generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
-)
-
-
-module_critic_agent = LlmAgent(
-    name="module_critic_agent",
-    model=MODEL,
-    description="Reviews the generated curriculum packet for coverage, safety, and clarity.",
-    instruction=MODULE_CRITIC_INSTRUCTION,
-    after_model_callback=log_model_usage_callback,
     generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
 )
 
@@ -155,6 +120,17 @@ quiz_agent = SequentialAgent(
 )
 
 
+module_critic_agent = LlmAgent(
+    name="module_critic_agent",
+    model=MODEL,
+    description="Reviews the generated curriculum packet for coverage, safety, and clarity.",
+    instruction=MODULE_CRITIC_INSTRUCTION,
+    tools=[AgentTool(quiz_generator_agent)],
+    after_model_callback=log_model_usage_callback,
+    generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
+)
+
+
 course_page_generator_agent = LlmAgent(
     name="course_page_generator_agent",
     model=MODEL,
@@ -174,6 +150,7 @@ course_page_report_agent = LlmAgent(
     model=MODEL,
     description="Reports where the generated HTML course page was saved.",
     instruction=COURSE_PAGE_REPORT_INSTRUCTION,
+    tools=[AgentTool(quiz_generator_agent)],
     after_model_callback=log_model_usage_callback,
     generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
 )
@@ -181,7 +158,7 @@ course_page_report_agent = LlmAgent(
 
 course_page_agent = SequentialAgent(
     name="course_page_agent",
-    description="Generates a Canvas-style HTML course page from saved unit lesson files.",
+    description="Generates a Canvas-style HTML course page and linked quiz from saved unit lesson files.",
     sub_agents=[
         course_page_generator_agent,
         course_page_report_agent,
@@ -210,13 +187,10 @@ usage_report_agent = LlmAgent(
     generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
 )
 
-
 curriculum_generation_agent = SequentialAgent(
     name="curriculum_generation_agent",
     description="Runs the curriculum pipeline after the interview is complete.",
     sub_agents=[
-        interview_transcript_agent,
-        profile_extractor_agent,
         curriculum_director_agent,
         content_generator_agent,
         curriculum_writer_agent,
@@ -228,8 +202,9 @@ curriculum_generation_agent = SequentialAgent(
 interviewer_agent = Agent(
     name="interviewer_agent",
     model=MODEL,
-    description="Interviews the learner, then hands off to curriculum generation.",
+    description="Interviews the learner, stores the learner profile, then hands off to curriculum generation.",
     instruction=INTERVIEWER_INSTRUCTION,
+    tools=[store_learner_profile],
     sub_agents=[curriculum_generation_agent],
     after_model_callback=log_model_usage_callback,
     generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,

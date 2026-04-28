@@ -5,6 +5,12 @@ import time
 from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
+from typing import Any
+
+try:
+    from google.adk.tools.tool_context import ToolContext
+except ImportError:  # Allows lightweight local imports when ADK is unavailable.
+    ToolContext = Any
 
 from .tool_logging import elapsed_ms, log_tool_call, refresh_usage_report
 
@@ -117,6 +123,22 @@ def _resolve_curriculum_session(session_hint: str | None = None) -> Path:
     return memory_dir
 
 
+def _resolve_curriculum_session_for_read(
+    session_hint: str | None = None,
+) -> tuple[Path, str | None]:
+    """Resolve a session for read-only tools, falling back instead of crashing."""
+    try:
+        return _resolve_curriculum_session(session_hint), None
+    except FileNotFoundError as exc:
+        session_dirs = _list_curriculum_session_dirs()
+        if not session_dirs:
+            raise
+        fallback = session_dirs[0].resolve()
+        return fallback, (
+            f"{exc}. Falling back to latest curriculum session: {fallback.name}"
+        )
+
+
 def _relative_memory_path(path: Path) -> str:
     resolved = path.resolve()
     memory_dir = _ensure_memory_dir().resolve()
@@ -147,8 +169,9 @@ def load_curriculum_units_for_quiz(
 ) -> str:
     """Load generated unit markdown files for quiz creation as JSON."""
     start_time = time.perf_counter()
+    fallback_warning = None
     try:
-        session_dir = _resolve_curriculum_session(session_hint)
+        session_dir, fallback_warning = _resolve_curriculum_session_for_read(session_hint)
         unit_files = sorted(session_dir.glob("unit_*.md"))
         if unit_filter:
             unit_files = [
@@ -174,6 +197,8 @@ def load_curriculum_units_for_quiz(
             "unit_count": len(units),
             "units": units,
         }
+        if fallback_warning:
+            result["warning"] = fallback_warning
     except (OSError, FileNotFoundError, ValueError) as exc:
         log_tool_call(
             tool_name="file_io.load_curriculum_units_for_quiz",
@@ -190,16 +215,64 @@ def load_curriculum_units_for_quiz(
         tool_name="file_io.load_curriculum_units_for_quiz",
         agent_name="quiz_generator_agent",
         input_summary=f"session_hint={session_hint}; unit_filter={unit_filter}",
-        output_summary=f"Loaded {len(units)} unit files from {result['source_session_dir']}",
+        output_summary=(
+            f"Loaded {len(units)} unit files from {result['source_session_dir']}"
+            + (f" ({fallback_warning})" if fallback_warning else "")
+        ),
         success=True,
         latency_ms=elapsed_ms(start_time),
         metadata={
             "source_session_dir": result["source_session_dir"],
             "unit_count": len(units),
             "filenames": [unit["filename"] for unit in units],
+            "fallback_warning": fallback_warning,
         },
     )
     return json.dumps(result, ensure_ascii=False)
+
+
+def store_learner_profile(
+    assessed_knowledge: str,
+    target_goal: str,
+    goal_archetype: str,
+    interview_transcript: str,
+    tool_context: ToolContext,
+) -> str:
+    """Store the intake transcript and learner profile in shared agent state."""
+    start_time = time.perf_counter()
+    normalized_archetype = goal_archetype.strip().upper()
+    if normalized_archetype not in {"THEORETICAL", "PRACTICAL_PROJECT"}:
+        normalized_archetype = "PRACTICAL_PROJECT"
+
+    profile = {
+        "assessed_knowledge": assessed_knowledge.strip(),
+        "target_goal": target_goal.strip(),
+        "goal_archetype": normalized_archetype,
+    }
+    profile_json = json.dumps(profile, ensure_ascii=False)
+    tool_context.state["interview_transcript"] = interview_transcript.strip()
+    tool_context.state["user_profile_json"] = profile_json
+
+    log_tool_call(
+        tool_name="state.store_learner_profile",
+        agent_name="interviewer_agent",
+        input_summary=summarize_profile_input(profile),
+        output_summary="Stored interview_transcript and user_profile_json in shared state.",
+        success=True,
+        latency_ms=elapsed_ms(start_time),
+        metadata={
+            "goal_archetype": normalized_archetype,
+            "target_goal": target_goal[:120],
+        },
+    )
+    return profile_json
+
+
+def summarize_profile_input(profile: dict[str, str]) -> str:
+    return (
+        f"goal={profile.get('target_goal', '')[:120]}; "
+        f"archetype={profile.get('goal_archetype', '')}"
+    )
 
 
 def load_curriculum_units_for_course_page(
@@ -208,8 +281,9 @@ def load_curriculum_units_for_course_page(
 ) -> str:
     """Load generated unit markdown files for course page creation as JSON."""
     start_time = time.perf_counter()
+    fallback_warning = None
     try:
-        session_dir = _resolve_curriculum_session(session_hint)
+        session_dir, fallback_warning = _resolve_curriculum_session_for_read(session_hint)
         unit_files = sorted(session_dir.glob("unit_*.md"))
         if unit_filter:
             unit_files = [
@@ -235,6 +309,8 @@ def load_curriculum_units_for_course_page(
             "unit_count": len(units),
             "units": units,
         }
+        if fallback_warning:
+            result["warning"] = fallback_warning
     except (OSError, FileNotFoundError, ValueError) as exc:
         log_tool_call(
             tool_name="file_io.load_curriculum_units_for_course_page",
@@ -251,13 +327,17 @@ def load_curriculum_units_for_course_page(
         tool_name="file_io.load_curriculum_units_for_course_page",
         agent_name="course_page_generator_agent",
         input_summary=f"session_hint={session_hint}; unit_filter={unit_filter}",
-        output_summary=f"Loaded {len(units)} unit files from {result['source_session_dir']}",
+        output_summary=(
+            f"Loaded {len(units)} unit files from {result['source_session_dir']}"
+            + (f" ({fallback_warning})" if fallback_warning else "")
+        ),
         success=True,
         latency_ms=elapsed_ms(start_time),
         metadata={
             "source_session_dir": result["source_session_dir"],
             "unit_count": len(units),
             "filenames": [unit["filename"] for unit in units],
+            "fallback_warning": fallback_warning,
         },
     )
     return json.dumps(result, ensure_ascii=False)
@@ -282,6 +362,57 @@ def _friendly_session_title(session_dir: Path, unit_files: list[Path]) -> str:
 
     name = re.sub(r"^\d{8}_\d{6}_", "", session_dir.name)
     return name.replace("_", " ").strip().title() or "Saved Course"
+
+
+def _classify_course_session(session_dir: Path) -> str:
+    profile_path = session_dir / "user_profile.json"
+    if profile_path.exists():
+        try:
+            profile = json.loads(profile_path.read_text(encoding="utf-8"))
+            goal_archetype = str(profile.get("goal_archetype", "")).upper()
+        except (OSError, ValueError, AttributeError):
+            goal_archetype = ""
+        if goal_archetype == "THEORETICAL":
+            return "theoretical"
+        if goal_archetype == "PRACTICAL_PROJECT":
+            return "project"
+
+    syllabus_path = session_dir / "syllabus.json"
+    if syllabus_path.exists():
+        try:
+            syllabus = json.loads(syllabus_path.read_text(encoding="utf-8"))
+            units = syllabus.get("units", []) if isinstance(syllabus, dict) else []
+            module_types = [
+                str(unit.get("module_type", "")).upper()
+                for unit in units
+                if isinstance(unit, dict)
+            ]
+        except (OSError, ValueError, AttributeError):
+            module_types = []
+        if module_types:
+            project_count = module_types.count("PROJECT_MILESTONE")
+            concept_count = module_types.count("CONCEPT_LECTURE")
+            if project_count > 0 and project_count >= concept_count:
+                return "project"
+            return "theoretical"
+
+    searchable_text = " ".join(
+        [session_dir.name]
+        + [path.name for path in session_dir.glob("unit_*.md")]
+    ).lower()
+    project_keywords = (
+        "project",
+        "build",
+        "cook",
+        "configure",
+        "implement",
+        "assemble",
+        "hands_on",
+        "tutorial",
+    )
+    if any(keyword in searchable_text for keyword in project_keywords):
+        return "project"
+    return "theoretical"
 
 
 def _format_markdown_inline(text: str) -> str:
@@ -401,10 +532,21 @@ def _build_static_course_page_html(
     course_title: str,
     course_summary: str,
     units: list[dict[str, str]],
+    quiz_available: bool = False,
 ) -> str:
     nav_items: list[str] = []
     module_items: list[str] = []
     sections: list[str] = []
+    quiz_sidebar_link = (
+        '<a class="quiz-link" href="quiz.html">Quiz</a>'
+        if quiz_available
+        else '<a class="quiz-link" href="../agent_chat.html">Generate quiz</a>'
+    )
+    quiz_topbar_link = (
+        '<a class="topbar-quiz-link" href="quiz.html">Quiz</a>'
+        if quiz_available
+        else '<a class="topbar-quiz-link" href="../agent_chat.html">Generate quiz</a>'
+    )
     for index, unit in enumerate(units):
         unit_id = f"unit-{index}"
         active_class = " active" if index == 0 else ""
@@ -468,6 +610,8 @@ def _build_static_course_page_html(
     .brand {{ margin: 0 0 18px; font-size: 0.9rem; color: var(--nav-muted); text-transform: uppercase; letter-spacing: 0; font-weight: 700; }}
     .dashboard-link {{ display: block; margin-bottom: 16px; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.18); border-radius: 8px; color: white; text-decoration: none; font-weight: 800; }}
     .dashboard-link:hover {{ background: rgba(255,255,255,0.12); }}
+    .quiz-link {{ display: block; margin-bottom: 16px; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.18); border-radius: 8px; color: white; text-decoration: none; font-weight: 800; }}
+    .quiz-link:hover {{ background: rgba(255,255,255,0.12); }}
     .unit-nav {{ display: grid; gap: 8px; }}
     .unit-link {{ width: 100%; min-height: 44px; display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 8px; align-items: center; padding: 9px 10px; border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; background: transparent; color: white; text-align: left; cursor: pointer; }}
     .unit-link span:last-child, .module-button strong, .module-button small {{ overflow-wrap: anywhere; }}
@@ -478,6 +622,8 @@ def _build_static_course_page_html(
     .topbar-row {{ display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }}
     .topbar-dashboard-link {{ flex: 0 0 auto; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--accent); text-decoration: none; font-weight: 800; background: white; }}
     .topbar-dashboard-link:hover {{ background: var(--accent-soft); }}
+    .topbar-quiz-link {{ flex: 0 0 auto; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--accent); text-decoration: none; font-weight: 800; background: white; }}
+    .topbar-quiz-link:hover {{ background: var(--accent-soft); }}
     .topbar p {{ margin: 6px 0 0; color: var(--muted); max-width: 860px; }}
     h1 {{ margin: 0; font-size: clamp(1.45rem, 3vw, 2.2rem); letter-spacing: 0; }}
     .content-grid {{ display: grid; grid-template-columns: minmax(220px, 310px) minmax(0, 1fr); gap: 22px; padding: 22px clamp(18px, 4vw, 38px) 42px; align-items: start; }}
@@ -505,9 +651,9 @@ def _build_static_course_page_html(
 </head>
 <body>
   <div class="app-shell">
-    <aside class="sidebar"><p class="brand">Course Navigation</p><a class="dashboard-link" href="../index.html">Dashboard</a><nav class="unit-nav" aria-label="Course units">{nav}</nav></aside>
+    <aside class="sidebar"><p class="brand">Course Navigation</p><a class="dashboard-link" href="../index.html">Dashboard</a>{quiz_sidebar_link}<nav class="unit-nav" aria-label="Course units">{nav}</nav></aside>
     <main class="main">
-      <header class="topbar"><div class="topbar-row"><div><h1>{title}</h1><p>{summary}</p></div><a class="topbar-dashboard-link" href="../index.html">Dashboard</a></div></header>
+      <header class="topbar"><div class="topbar-row"><div><h1>{title}</h1><p>{summary}</p></div><div><a class="topbar-dashboard-link" href="../index.html">Dashboard</a>{quiz_topbar_link}</div></div></header>
       <div class="content-grid"><section class="modules" aria-label="Modules"><h2>Modules</h2><ol class="module-list">{modules}</ol></section><section aria-label="Lesson content">{sections}</section></div>
     </main>
   </div>
@@ -527,6 +673,8 @@ def _build_static_course_page_html(
 """.format(
         title=escape(course_title),
         summary=escape(course_summary),
+        quiz_sidebar_link=quiz_sidebar_link,
+        quiz_topbar_link=quiz_topbar_link,
         nav="".join(nav_items),
         modules="".join(module_items),
         sections="".join(sections),
@@ -552,14 +700,21 @@ def _ensure_course_page_for_session(session_dir: Path) -> dict[str, object]:
     course_title = _friendly_session_title(session_dir, unit_files)
     summary = f"{len(units)} unit lesson set saved in {session_dir.name}."
     page_path = session_dir / "course_page.html"
+    quiz_path = session_dir / "quiz.html"
     page_path.write_text(
-        _build_static_course_page_html(course_title, summary, units),
+        _build_static_course_page_html(
+            course_title,
+            summary,
+            units,
+            quiz_available=quiz_path.exists(),
+        ),
         encoding="utf-8",
     )
 
     return {
         "title": course_title,
         "session_name": session_dir.name,
+        "category": _classify_course_session(session_dir),
         "unit_count": len(units),
         "course_page": page_path,
         "updated_at": datetime.fromtimestamp(
@@ -581,14 +736,20 @@ def _build_agent_chat_html(chat_url: str) -> str:
     body {{ margin: 0; min-height: 100vh; background: #f3f5f8; color: #1f2937; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
     header {{ min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px clamp(16px, 4vw, 34px); background: #ffffff; border-bottom: 1px solid #d8dee8; }}
     h1 {{ margin: 0; font-size: 1.1rem; letter-spacing: 0; }}
+    nav {{ display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }}
     a {{ color: #2563eb; font-weight: 800; text-decoration: none; }}
+    .nav-link {{ padding: 8px 12px; border: 1px solid #d8dee8; border-radius: 8px; background: #ffffff; }}
+    .nav-link:hover {{ background: #e8f0ff; }}
     iframe {{ display: block; width: 100%; height: calc(100vh - 64px); border: 0; background: #ffffff; }}
   </style>
 </head>
 <body>
   <header>
     <h1>Add project/lesson</h1>
-    <a href="{chat_url}" target="_blank" rel="noopener noreferrer">Open root agent chat</a>
+    <nav aria-label="Agent chat navigation">
+      <a class="nav-link" href="index.html">Dashboard</a>
+      <a class="nav-link" href="{chat_url}" target="_blank" rel="noopener noreferrer">Open root agent chat</a>
+    </nav>
   </header>
   <iframe src="{chat_url}" title="Root agent chat"></iframe>
 </body>
@@ -597,22 +758,48 @@ def _build_agent_chat_html(chat_url: str) -> str:
 
 
 def _build_dashboard_html(courses: list[dict[str, object]], chat_url: str) -> str:
-    course_cards = []
-    for course in courses:
-        href = f"{course['session_name']}/course_page.html"
-        course_cards.append(
-            "<a class=\"course-card\" href=\"{href}\">"
-            "<span class=\"course-status\">Published</span>"
-            "<h2>{title}</h2>"
-            "<p>{unit_count} unit(s)</p>"
-            "<small>Updated {updated_at}</small>"
-            "</a>".format(
-                href=escape(str(href), quote=True),
-                title=escape(str(course["title"])),
-                unit_count=course["unit_count"],
-                updated_at=escape(str(course["updated_at"])),
+    def render_cards(category: str) -> str:
+        cards = []
+        for course in courses:
+            if course.get("category") != category:
+                continue
+            href = f"{course['session_name']}/course_page.html"
+            cards.append(
+                "<a class=\"course-card\" href=\"{href}\">"
+                "<span class=\"course-status\">Published</span>"
+                "<h2>{title}</h2>"
+                "<p>{unit_count} unit(s)</p>"
+                "<small>Updated {updated_at}</small>"
+                "</a>".format(
+                    href=escape(str(href), quote=True),
+                    title=escape(str(course["title"])),
+                    unit_count=course["unit_count"],
+                    updated_at=escape(str(course["updated_at"])),
+                )
             )
+        if cards:
+            return "".join(cards)
+        return (
+            "<div class=\"empty-section\">"
+            "<h3>No courses yet</h3>"
+            "<p>Use Add project/lesson to create one.</p>"
+            "</div>"
         )
+
+    theoretical_cards = render_cards("theoretical")
+    project_cards = render_cards("project")
+    theoretical_count = sum(1 for course in courses if course.get("category") == "theoretical")
+    project_count = sum(1 for course in courses if course.get("category") == "project")
+
+    add_card = (
+        "<a class=\"add-card\" href=\"agent_chat.html\">"
+        "<span class=\"plus\">+</span>"
+        "<div>"
+        "<h2>Add project/lesson</h2>"
+        "<p>Start a new curriculum with the root agent.</p>"
+        "</div>"
+        "</a>"
+    )
 
     return """<!doctype html>
 <html lang="en">
@@ -644,7 +831,13 @@ def _build_dashboard_html(courses: list[dict[str, object]], chat_url: str) -> st
     .topbar {{ background: var(--panel); border-bottom: 1px solid var(--line); padding: 24px clamp(18px, 4vw, 42px); }}
     .topbar h2 {{ margin: 0; font-size: clamp(1.55rem, 3vw, 2.25rem); letter-spacing: 0; }}
     .topbar p {{ margin: 6px 0 0; color: var(--muted); }}
-    .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; padding: 24px clamp(18px, 4vw, 42px) 42px; }}
+    .dashboard-content {{ display: grid; gap: 28px; padding: 24px clamp(18px, 4vw, 42px) 42px; }}
+    .course-section {{ display: grid; gap: 14px; }}
+    .section-heading {{ display: flex; align-items: end; justify-content: space-between; gap: 12px; }}
+    .section-heading h3 {{ margin: 0; font-size: 1.18rem; letter-spacing: 0; }}
+    .section-heading p {{ margin: 4px 0 0; color: var(--muted); }}
+    .section-count {{ color: var(--muted); font-weight: 800; }}
+    .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; }}
     .course-card, .add-card {{ min-height: 190px; display: flex; flex-direction: column; justify-content: space-between; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); text-decoration: none; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04); }}
     .course-card:hover, .add-card:hover {{ border-color: var(--accent); box-shadow: 0 10px 24px rgba(16, 24, 40, 0.08); }}
     .course-card h2, .add-card h2 {{ margin: 14px 0 8px; font-size: 1.12rem; letter-spacing: 0; overflow-wrap: anywhere; }}
@@ -652,6 +845,9 @@ def _build_dashboard_html(courses: list[dict[str, object]], chat_url: str) -> st
     .course-card small {{ color: var(--muted); }}
     .course-status {{ align-self: flex-start; padding: 4px 8px; border-radius: 999px; background: #ecfdf3; color: var(--green); font-size: 0.78rem; font-weight: 800; }}
     .add-card {{ border-style: dashed; background: var(--accent-soft); }}
+    .empty-section {{ min-height: 150px; padding: 18px; border: 1px dashed var(--line); border-radius: 8px; background: #ffffff; color: var(--muted); }}
+    .empty-section h3 {{ margin: 0 0 6px; color: var(--ink); font-size: 1rem; letter-spacing: 0; }}
+    .empty-section p {{ margin: 0; }}
     .plus {{ width: 44px; height: 44px; display: grid; place-items: center; border-radius: 8px; background: var(--accent); color: white; font-size: 1.8rem; line-height: 1; }}
     @media (max-width: 760px) {{ .shell {{ grid-template-columns: 1fr; }} aside {{ display: flex; gap: 8px; align-items: center; justify-content: space-between; }} aside h1 {{ margin: 0; }} }}
   </style>
@@ -670,22 +866,38 @@ def _build_dashboard_html(courses: list[dict[str, object]], chat_url: str) -> st
         <h2>Dashboard</h2>
         <p>Course cards are built from saved lessons in long-term memory.</p>
       </header>
-      <section class="grid" aria-label="Courses">
-        <a class="add-card" href="agent_chat.html">
-          <span class="plus">+</span>
-          <div>
-            <h2>Add project/lesson</h2>
-            <p>Start a new curriculum with the root agent.</p>
+      <div class="dashboard-content">
+        <section class="course-section" aria-labelledby="theoretical-heading">
+          <div class="section-heading">
+            <div>
+              <h3 id="theoretical-heading">Theoretical Lessons</h3>
+              <p>Concept-focused courses and study paths.</p>
+            </div>
+            <span class="section-count">{theoretical_count} course(s)</span>
           </div>
-        </a>
-        {cards}
-      </section>
+          <div class="grid">{theoretical_cards}</div>
+        </section>
+        <section class="course-section" aria-labelledby="projects-heading">
+          <div class="section-heading">
+            <div>
+              <h3 id="projects-heading">Projects</h3>
+              <p>Applied courses with hands-on work or final builds.</p>
+            </div>
+            <span class="section-count">{project_count} course(s)</span>
+          </div>
+          <div class="grid">{add_card}{project_cards}</div>
+        </section>
+      </div>
     </main>
   </div>
 </body>
 </html>
 """.format(
-        cards="".join(course_cards),
+        theoretical_cards=theoretical_cards,
+        project_cards=project_cards,
+        theoretical_count=theoretical_count,
+        project_count=project_count,
+        add_card=add_card,
     )
 
 
@@ -738,6 +950,7 @@ def refresh_canvas_dashboard(agent_name: str = "dashboard_manager_agent") -> dic
         "courses": [
             {
                 "title": course["title"],
+                "category": course["category"],
                 "unit_count": course["unit_count"],
                 "path": f"tt/long_term_memory/{course['session_name']}/course_page.html",
             }
@@ -758,6 +971,12 @@ def refresh_canvas_dashboard(agent_name: str = "dashboard_manager_agent") -> dic
             "dashboard_path": result["dashboard_path"],
             "chat_page_path": result["chat_page_path"],
             "course_count": len(courses),
+            "theoretical_count": sum(
+                1 for course in courses if course.get("category") == "theoretical"
+            ),
+            "project_count": sum(
+                1 for course in courses if course.get("category") == "project"
+            ),
             "generated_course_pages": generated_course_pages,
             "chat_url": chat_url,
         },

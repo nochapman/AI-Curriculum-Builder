@@ -70,7 +70,12 @@ def refresh_usage_report() -> tuple[Path, Path] | None:
         from .usage_report import build_usage_report, write_usage_report
     except ImportError:
         return None
-    return write_usage_report(build_usage_report())
+    try:
+        return write_usage_report(build_usage_report())
+    except OSError as exc:
+        if exc.errno == 28:
+            return None
+        raise
 
 
 def log_model_usage(
@@ -110,8 +115,13 @@ def log_model_usage(
         "cost_usd_estimate": cost_usd,
         "metadata": _coerce_jsonable(metadata or {}),
     }
-    with MODEL_USAGE_LOG_PATH.open("a", encoding="utf-8") as log_file:
-        log_file.write(json.dumps(record, ensure_ascii=False) + "\n")
+    try:
+        with MODEL_USAGE_LOG_PATH.open("a", encoding="utf-8") as log_file:
+            log_file.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError as exc:
+        if exc.errno == 28:
+            return MODEL_USAGE_LOG_PATH
+        raise
     if AUTO_UPDATE_USAGE_REPORT:
         refresh_usage_report()
     return MODEL_USAGE_LOG_PATH
@@ -151,8 +161,13 @@ def log_tool_call(
         "error_message": summarize_text(error_message),
         "metadata": _coerce_jsonable(metadata or {}),
     }
-    with TOOL_CALL_LOG_PATH.open("a", encoding="utf-8") as log_file:
-        log_file.write(json.dumps(record, ensure_ascii=False) + "\n")
+    try:
+        with TOOL_CALL_LOG_PATH.open("a", encoding="utf-8") as log_file:
+            log_file.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError as exc:
+        if exc.errno == 28:
+            return TOOL_CALL_LOG_PATH
+        raise
     if AUTO_UPDATE_USAGE_REPORT:
         refresh_usage_report()
     return TOOL_CALL_LOG_PATH

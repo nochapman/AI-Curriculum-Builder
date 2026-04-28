@@ -345,6 +345,22 @@ def _build_quiz_html(bundle: QuizBundle) -> str:
       background: var(--panel);
     }}
     header p {{ color: var(--muted); margin: 6px 0 0; }}
+    .top-actions {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }}
+    .top-actions a {{
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 800;
+      background: white;
+    }}
+    .top-actions a:hover {{ background: var(--accent-soft); }}
     h1 {{ margin: 0; font-size: clamp(1.6rem, 3vw, 2.35rem); letter-spacing: 0; }}
     main {{
       display: grid;
@@ -437,6 +453,10 @@ def _build_quiz_html(bundle: QuizBundle) -> str:
   <header>
     <h1>{title}</h1>
     <p>Choose a unit, answer the questions, and check your score.</p>
+    <div class="top-actions">
+      <a href="course_page.html">Course page</a>
+      <a href="../index.html">Dashboard</a>
+    </div>
   </header>
   <main>
     <nav aria-label="Quiz units">{nav}</nav>
@@ -729,6 +749,19 @@ def _build_course_page_html(bundle: CoursePageBundle) -> str:
     .dashboard-link:hover {{
       background: rgba(255,255,255,0.12);
     }}
+    .quiz-link {{
+      display: block;
+      margin-bottom: 16px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 8px;
+      color: white;
+      text-decoration: none;
+      font-weight: 800;
+    }}
+    .quiz-link:hover {{
+      background: rgba(255,255,255,0.12);
+    }}
     .unit-nav {{
       display: grid;
       gap: 8px;
@@ -789,6 +822,19 @@ def _build_course_page_html(bundle: CoursePageBundle) -> str:
       background: white;
     }}
     .topbar-dashboard-link:hover {{
+      background: var(--accent-soft);
+    }}
+    .topbar-quiz-link {{
+      flex: 0 0 auto;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 800;
+      background: white;
+    }}
+    .topbar-quiz-link:hover {{
       background: var(--accent-soft);
     }}
     .topbar p {{
@@ -940,6 +986,7 @@ def _build_course_page_html(bundle: CoursePageBundle) -> str:
     <aside class="sidebar">
       <p class="brand">Course Navigation</p>
       <a class="dashboard-link" href="../index.html">Dashboard</a>
+      <a class="quiz-link" href="quiz.html">Quiz</a>
       <nav class="unit-nav" aria-label="Course units">{nav}</nav>
     </aside>
     <main class="main">
@@ -949,7 +996,10 @@ def _build_course_page_html(bundle: CoursePageBundle) -> str:
             <h1>{title}</h1>
             <p>{summary}</p>
           </div>
-          <a class="topbar-dashboard-link" href="../index.html">Dashboard</a>
+          <div>
+            <a class="topbar-dashboard-link" href="../index.html">Dashboard</a>
+            <a class="topbar-quiz-link" href="quiz.html">Quiz</a>
+          </div>
         </div>
       </header>
       <div class="content-grid">
@@ -1464,6 +1514,18 @@ def save_quiz_bundle_callback(
         f"Quiz saved to {quiz_path}. It includes navigation for "
         f"{len(bundle.units)} unit quiz section(s)."
     )
+    try:
+        dashboard_result = refresh_canvas_dashboard(
+            agent_name="dashboard_manager_agent"
+        )
+        callback_context.state["generated_quiz_report"] += (
+            f" Dashboard and course page links refreshed at "
+            f"{dashboard_result['dashboard_path']}."
+        )
+    except (OSError, ValueError) as exc:
+        callback_context.state["generated_quiz_report"] += (
+            f" Dashboard refresh failed: {exc}"
+        )
     log_tool_call(
         tool_name="guardrail_check",
         agent_name=_agent_name(callback_context, "quiz_generator_agent"),
