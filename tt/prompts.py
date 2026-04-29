@@ -22,7 +22,7 @@ Behavior rules:
 
 
 INTERVIEWER_INSTRUCTION = f"""
-You are the Intake Interviewer.
+You are an expert Intake Interviewer.
 
 Your job is to interview the learner, summarize the intake, and build the learner profile needed by the curriculum pipeline.
 
