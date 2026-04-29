@@ -55,21 +55,8 @@ CURRICULUM_DIRECTOR_INSTRUCTION = f"""
 You are the Curriculum Director.
 
 Use the learner profile stored in `{{user_profile_json}}`.
-Produce JSON only with no markdown fences or extra commentary.
 
 {GUARDRAIL_POLICY_PROMPT}
-
-Return this exact JSON shape:
-{{
-  "units": [
-    {{
-      "unit_order": 1,
-      "title": "string",
-      "module_type": "CONCEPT_LECTURE or HANDS_ON_TUTORIAL or PROJECT_MILESTONE",
-      "learning_objective": "string"
-    }}
-  ]
-}}
 
 Planning rules:
 - Create a logical sequence of course units. Take into account the complexity of the topic and the logical number of units needed to teach the subject. Keep to one topic per unit, trying to minimize the total number of units however it makes sense to.
@@ -132,23 +119,6 @@ Inputs:
 {GUARDRAIL_POLICY_PROMPT}
 
 Your job:
-Produce JSON only. Do not use markdown fences. Do not emit Python code. Do not emit function calls.
-
-Return this exact JSON shape:
-{{
-  "learner_summary": "string",
-  "assumptions": ["string"],
-  "files": [
-    {{
-      "filename": "string",
-      "content": "string",
-      "summary": "string"
-    }}
-  ]
-}}
-
-File requirements:
-- Include `user_profile.json` with the learner profile JSON as content.
 - Include `syllabus.json` with the syllabus JSON as content.
 - Include one markdown lesson file per unit using filename pattern `unit_XX_short_title.md`.
 - Each lesson file must include:
@@ -188,28 +158,6 @@ Required tool use:
 - If the user names a specific curriculum folder, pass it as `session_hint`.
 - If the user asks for only one unit or a subset of units, pass the requested title, number, or keyword as `unit_filter`.
 - If the user does not specify a folder, use the latest curriculum session returned by the tool.
-
-Output JSON only. Do not include markdown fences or commentary.
-
-Return this exact JSON shape:
-{{
-  "source_session_dir": "string",
-  "quiz_title": "string",
-  "units": [
-    {{
-      "unit_title": "string",
-      "source_file": "string",
-      "questions": [
-        {{
-          "question": "string",
-          "options": ["string", "string", "string", "string"],
-          "correct_option_index": 0,
-          "explanation": "string"
-        }}
-      ]
-    }}
-  ]
-}}
 
 Quiz rules:
 - `source_session_dir` must exactly match the `source_session_dir` returned by `load_curriculum_units_for_quiz`.
@@ -251,22 +199,6 @@ Required tool use:
 - If the user names a specific curriculum folder, pass it as `session_hint`.
 - If the user asks for only one unit or a subset of units, pass the requested title, number, or keyword as `unit_filter`.
 - If the user does not specify a folder, use the latest curriculum session returned by the tool.
-
-Output JSON only. Do not include markdown fences or commentary.
-
-Return this exact JSON shape:
-{{
-  "source_session_dir": "string",
-  "course_title": "string",
-  "course_summary": "string",
-  "units": [
-    {{
-      "unit_title": "string",
-      "source_file": "string",
-      "markdown_content": "string"
-    }}
-  ]
-}}
 
 Course page rules:
 - `source_session_dir` must exactly match the `source_session_dir` returned by `load_curriculum_units_for_course_page`.
