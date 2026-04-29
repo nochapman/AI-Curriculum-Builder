@@ -175,6 +175,74 @@ usage_report_agent = LlmAgent(
     generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
 )
 
+
+pipeline_course_page_generator_agent = LlmAgent(
+    name="pipeline_course_page_generator_agent",
+    model=MODEL,
+    description="Reads saved unit lessons and creates a structured course page bundle.",
+    instruction=COURSE_PAGE_GENERATOR_INSTRUCTION,
+    tools=[load_curriculum_units_for_course_page],
+    output_schema=CoursePageBundle,
+    output_key="course_page_bundle",
+    after_model_callback=log_model_usage_callback,
+    after_agent_callback=save_course_page_bundle_callback,
+    generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
+)
+
+
+pipeline_course_page_report_agent = LlmAgent(
+    name="pipeline_course_page_report_agent",
+    model=MODEL,
+    description="Reports where the generated HTML course page was saved.",
+    instruction=COURSE_PAGE_REPORT_INSTRUCTION,
+    after_model_callback=log_model_usage_callback,
+    generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
+)
+
+
+pipeline_course_page_agent = SequentialAgent(
+    name="pipeline_course_page_agent",
+    description="Generates a Canvas-style HTML course page and linked quiz from saved unit lesson files.",
+    sub_agents=[
+        pipeline_course_page_generator_agent,
+        pipeline_course_page_report_agent,
+    ],
+)
+
+
+pipeline_quiz_generator_agent = LlmAgent(
+    name="pipeline_quiz_generator_agent",
+    model=MODEL,
+    description="Reads saved unit lessons and creates a structured quiz bundle.",
+    instruction=QUIZ_GENERATOR_INSTRUCTION,
+    tools=[load_curriculum_units_for_quiz],
+    output_schema=QuizBundle,
+    output_key="quiz_bundle",
+    after_model_callback=log_model_usage_callback,
+    after_agent_callback=save_quiz_bundle_callback,
+    generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
+)
+
+
+pipeline_quiz_report_agent = LlmAgent(
+    name="pipeline_quiz_report_agent",
+    model=MODEL,
+    description="Reports where the generated HTML quiz was saved.",
+    instruction=QUIZ_REPORT_INSTRUCTION,
+    after_model_callback=log_model_usage_callback,
+    generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
+)
+
+
+pipeline_quiz_agent = SequentialAgent(
+    name="pipeline_quiz_agent",
+    description="Generates an interactive HTML quiz from saved unit lesson files.",
+    sub_agents=[
+        pipeline_quiz_generator_agent,
+        pipeline_quiz_report_agent,
+    ],
+)
+
 curriculum_generation_agent = SequentialAgent(
     name="curriculum_generation_agent",
     description="Runs the curriculum pipeline after the interview is complete.",
@@ -182,8 +250,8 @@ curriculum_generation_agent = SequentialAgent(
         curriculum_director_agent,
         content_generator_agent,
         curriculum_writer_agent,
-        course_page_agent,
-        quiz_agent,
+        pipeline_course_page_agent,
+        pipeline_quiz_agent,
     ],
 )
 
