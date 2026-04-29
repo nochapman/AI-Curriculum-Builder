@@ -22,13 +22,12 @@ from .prompts import (
     CURRICULUM_WRITER_INSTRUCTION,
     DASHBOARD_MANAGER_INSTRUCTION,
     INTERVIEWER_INSTRUCTION,
-    MODULE_CRITIC_INSTRUCTION,
     QUIZ_GENERATOR_INSTRUCTION,
     QUIZ_REPORT_INSTRUCTION,
     ROOT_AGENT_INSTRUCTION,
     USAGE_REPORT_INSTRUCTION,
 )
-from .schemas import CoursePageBundle, CurriculumBundle, QuizBundle
+from .schemas import CoursePageBundle, CurriculumBundle, QuizBundle, SyllabusOutline
 from .tools import (
     load_curriculum_units_for_course_page,
     load_curriculum_units_for_quiz,
@@ -55,6 +54,7 @@ curriculum_director_agent = LlmAgent(
     model=MODEL,
     description="Builds a structured syllabus from the extracted learner profile.",
     instruction=CURRICULUM_DIRECTOR_INSTRUCTION,
+    output_schema=SyllabusOutline,
     output_key="syllabus_json",
     after_model_callback=log_model_usage_callback,
     generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
@@ -120,17 +120,6 @@ quiz_agent = SequentialAgent(
 )
 
 
-module_critic_agent = LlmAgent(
-    name="module_critic_agent",
-    model=MODEL,
-    description="Reviews the generated curriculum packet for coverage, safety, and clarity.",
-    instruction=MODULE_CRITIC_INSTRUCTION,
-    tools=[AgentTool(quiz_generator_agent)],
-    after_model_callback=log_model_usage_callback,
-    generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
-)
-
-
 course_page_generator_agent = LlmAgent(
     name="course_page_generator_agent",
     model=MODEL,
@@ -150,7 +139,6 @@ course_page_report_agent = LlmAgent(
     model=MODEL,
     description="Reports where the generated HTML course page was saved.",
     instruction=COURSE_PAGE_REPORT_INSTRUCTION,
-    tools=[AgentTool(quiz_generator_agent)],
     after_model_callback=log_model_usage_callback,
     generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
 )
@@ -194,7 +182,8 @@ curriculum_generation_agent = SequentialAgent(
         curriculum_director_agent,
         content_generator_agent,
         curriculum_writer_agent,
-        module_critic_agent,
+        course_page_agent,
+        quiz_agent,
     ],
 )
 

@@ -170,28 +170,7 @@ Rules:
 - Never include `vertexaisearch.cloud.google.com` or any redirect URL in any file.
 - Do not omit any syllabus unit.
 - Do not write or save lesson content that violates the domain guardrails.
-"""
-
-
-MODULE_CRITIC_INSTRUCTION = f"""
-You are the Module Critic.
-
-Review the generated curriculum packet in `{{generated_curriculum_report}}`.
-
-{GUARDRAIL_POLICY_PROMPT}
-
-Your output should be a short final response to the learner that:
-- before writing the final response, call `quiz_generator_agent` when a curriculum directory is available and a quiz has not already been generated
-- states whether the curriculum appears ready
-- names any important gaps or assumptions
-- highlights the saved curriculum artifacts in `tt/long_term_memory` using `{{saved_artifacts_summary}}`
-- if a quiz report is available in state, mention that a linked quiz page was generated
-- if a dashboard report is available in state, mention that the Canvas-style dashboard was refreshed
-- suggests the best next question the learner should ask if they want revisions
-
-If the curriculum appears unsafe, misleading, or clearly incomplete, say so directly.
-If the guardrail callback blocked saving, report that the curriculum was not saved and explain the policy category at a high level.
-If `source_integrity_warning` is true, explain that the curriculum was saved but some references were marked as unverified and should be used with caution.
+- Ensure the curriculum is safe, clear, and comprehensive.
 """
 
 
@@ -252,6 +231,7 @@ You are the Quiz Reporter.
 Review `{generated_quiz_report}` and respond to the learner briefly.
 
 Your response should:
+- If `{generated_curriculum_report}` is available, briefly summarize that the curriculum was successfully created.
 - State where the HTML quiz was saved.
 - Mention that the page lets the learner navigate between unit quizzes.
 - If quiz generation failed or was blocked, state that clearly.
@@ -267,6 +247,7 @@ Your job is to create a Canvas-style course web page from saved unit lesson mark
 
 Required tool use:
 - Always call `load_curriculum_units_for_course_page` before writing the course page JSON.
+- If `generated_curriculum_dir` exists in state, pass it as `session_hint` so the course page matches the curriculum that was just generated.
 - If the user names a specific curriculum folder, pass it as `session_hint`.
 - If the user asks for only one unit or a subset of units, pass the requested title, number, or keyword as `unit_filter`.
 - If the user does not specify a folder, use the latest curriculum session returned by the tool.
@@ -305,7 +286,6 @@ You are the Course Page Reporter.
 Review `{generated_course_page_report}` and respond to the learner briefly.
 
 Your response should:
-- Before writing the response, call `quiz_generator_agent` if a quiz has not already been generated.
 - State where the HTML course page was saved.
 - Mention that the page displays the saved unit markdown in a Canvas-style course layout with unit navigation.
 - If a quiz report is available in state, mention that a linked quiz page was also saved.
