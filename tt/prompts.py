@@ -160,7 +160,7 @@ File requirements:
   - examples
   - practice tasks or checkpoint
   - key takeaways or summary
-
+- Each lesson file may include up to two optional additional sections, chosen only when they meaningfully support the topic and improve the learner’s understanding.
 
 Rules:
 - `summary` must be 1 to 2 sentences per file.
