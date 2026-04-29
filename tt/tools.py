@@ -147,6 +147,14 @@ def _relative_memory_path(path: Path) -> str:
     return str(path)
 
 
+def _course_progress_percent(unit_count: int, quiz_available: bool = False) -> int:
+    return 0
+
+
+def _course_achievement_count(unit_count: int, quiz_available: bool = False) -> int:
+    return 0
+
+
 def _unit_matches_filter(path: Path, unit_filter: str) -> bool:
     normalized_filter = _slugify(unit_filter)
     normalized_stem = _slugify(path.stem)
@@ -581,43 +589,43 @@ def _build_static_course_page_html(
   <style>
     :root {{
       color-scheme: light;
-      --page: #f6f8fb;
+      --page: #f4f1ea;
       --panel: #ffffff;
-      --ink: #182230;
-      --muted: #64748b;
-      --line: #d9e1ec;
-      --nav: #152238;
-      --nav-muted: #b9c6d8;
-      --accent: #2f6fed;
-      --accent-soft: #eef4ff;
-      --success: #0f766e;
-      --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+      --ink: #181a1f;
+      --muted: #6f756f;
+      --line: #ddd8cc;
+      --accent: #f05a43;
+      --accent-dark: #d9432f;
+      --accent-soft: #fff0eb;
+      --surface: #f9f7f0;
+      --shadow: 0 18px 38px rgba(26, 22, 18, 0.11);
     }}
     * {{ box-sizing: border-box; }}
-    body {{ margin: 0; background: linear-gradient(180deg, #ffffff 0, var(--page) 280px), var(--page); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.65; text-rendering: optimizeLegibility; }}
-    .app-shell {{ min-height: 100vh; display: grid; grid-template-columns: 256px minmax(0, 1fr); }}
-    .sidebar {{ background: var(--nav); color: white; padding: 24px 18px; position: sticky; top: 0; height: 100vh; overflow: auto; border-right: 1px solid rgba(255,255,255,0.08); }}
-    .brand {{ margin: 0 0 20px; font-size: 0.76rem; color: var(--nav-muted); text-transform: uppercase; letter-spacing: 0; font-weight: 800; }}
-    .dashboard-link, .quiz-link {{ display: block; margin-bottom: 10px; padding: 11px 12px; border: 1px solid rgba(255,255,255,0.18); border-radius: 8px; color: white; text-decoration: none; font-weight: 800; font-size: 0.92rem; background: rgba(255,255,255,0.04); }}
-    .dashboard-link:hover, .quiz-link:hover {{ background: rgba(255,255,255,0.12); }}
-    .quiz-link {{ margin-bottom: 18px; }}
-    .unit-nav {{ display: grid; gap: 7px; }}
-    .unit-link {{ width: 100%; min-height: 46px; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: center; padding: 10px 11px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #e5edf8; text-align: left; cursor: pointer; font: inherit; font-size: 0.92rem; }}
+    body {{ margin: 0; background: var(--page); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.65; text-rendering: optimizeLegibility; }}
+    .top-nav {{ display: flex; align-items: center; justify-content: center; gap: 18px; padding: 18px clamp(20px, 4vw, 54px); background: rgba(255,255,255,0.76); border-bottom: 1px solid var(--line); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 10; }}
+    .brand-mark {{ position: absolute; left: clamp(20px, 4vw, 54px); font-weight: 950; font-size: 1.15rem; }}
+    .nav-pills {{ display: flex; flex-wrap: wrap; gap: 8px; padding: 6px; border-radius: 999px; background: #ebe7dc; }}
+    .nav-pills a {{ min-height: 38px; padding: 9px 16px; border-radius: 999px; color: var(--ink); text-decoration: none; font-weight: 850; font-size: 0.92rem; }}
+    .nav-pills a.active, .nav-pills a:hover {{ background: #181a1f; color: white; }}
+    .course-shell {{ display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 24px; padding: 26px clamp(20px, 4vw, 54px) 54px; }}
+    .unit-sidebar, .lesson-panel {{ background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }}
+    .unit-sidebar {{ align-self: start; position: sticky; top: 112px; display: flex; max-height: calc(100vh - 136px); flex-direction: column; padding: 20px; }}
+    .unit-sidebar h2 {{ margin: 0 0 14px; font-size: 1.12rem; }}
+    .unit-nav {{ min-height: 0; display: grid; gap: 8px; overflow-y: auto; padding-right: 4px; }}
+    .unit-link {{ width: 100%; min-height: 46px; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: center; padding: 10px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); text-align: left; cursor: pointer; font: inherit; font-size: 0.92rem; }}
     .unit-link span:last-child {{ overflow-wrap: anywhere; }}
-    .unit-link:hover {{ background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.12); }}
-    .unit-link.active {{ background: white; color: var(--nav); border-color: white; font-weight: 700; }}
-    .unit-number {{ font-variant-numeric: tabular-nums; }}
-    .main {{ min-width: 0; display: grid; grid-template-rows: auto 1fr; }}
-    .topbar {{ background: rgba(255,255,255,0.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: 24px clamp(20px, 4vw, 48px); }}
-    .topbar-row {{ display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }}
-    .topbar-row > div:last-child {{ display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }}
-    .topbar-dashboard-link, .topbar-quiz-link {{ flex: 0 0 auto; padding: 9px 13px; border: 1px solid var(--line); border-radius: 8px; color: var(--accent); text-decoration: none; font-weight: 800; background: white; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }}
-    .topbar-dashboard-link:hover, .topbar-quiz-link:hover {{ background: var(--accent-soft); }}
-    .topbar p {{ margin: 8px 0 0; color: var(--muted); max-width: 860px; }}
+    .unit-link:hover {{ background: white; border-color: var(--accent); }}
+    .unit-link.active {{ background: var(--accent); color: white; border-color: var(--accent); font-weight: 800; }}
+    .unit-number {{ width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-variant-numeric: tabular-nums; font-weight: 900; }}
+    .unit-link.active .unit-number {{ background: rgba(255,255,255,0.22); color: white; }}
+    .course-hero {{ margin-bottom: 22px; padding: 26px; border-radius: 8px; background: var(--accent); color: white; box-shadow: var(--shadow); }}
+    .course-hero h1 {{ color: white; }}
+    .course-hero p {{ max-width: 840px; color: rgba(255,255,255,0.86); }}
+    .hero-actions {{ display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }}
+    .hero-actions a {{ padding: 10px 14px; border-radius: 999px; background: white; color: var(--accent); text-decoration: none; font-weight: 900; }}
     h1 {{ margin: 0; font-size: clamp(1.65rem, 3vw, 2.45rem); letter-spacing: 0; line-height: 1.15; }}
-    .content-grid {{ padding: 28px clamp(20px, 4vw, 48px) 54px; }}
-    .lesson-panel {{ background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); }}
-    .lesson-header {{ padding: clamp(22px, 3vw, 36px); border-bottom: 1px solid var(--line); background: linear-gradient(180deg, #fbfdff 0, #f7faff 100%); }}
+    .lesson-panel {{ overflow: hidden; }}
+    .lesson-header {{ padding: clamp(22px, 3vw, 36px); border-bottom: 1px solid var(--line); background: #faf8f1; }}
     .lesson-header p {{ margin: 0 0 7px; color: var(--muted); font-size: 0.86rem; font-weight: 700; overflow-wrap: anywhere; }}
     .lesson-header h2 {{ margin: 0; font-size: clamp(1.35rem, 2.2vw, 1.95rem); letter-spacing: 0; line-height: 1.2; }}
     .lesson-body {{ padding: clamp(24px, 3vw, 40px); max-width: 920px; }}
@@ -628,19 +636,30 @@ def _build_static_course_page_html(
     .lesson-body ul, .lesson-body ol {{ padding-left: 1.35rem; }}
     .lesson-body li + li {{ margin-top: 0.34rem; }}
     .lesson-body a {{ color: var(--accent); font-weight: 700; }}
-    .lesson-body blockquote {{ margin: 18px 0; padding: 14px 16px; border-left: 4px solid var(--accent); background: var(--accent-soft); color: #243447; border-radius: 0 8px 8px 0; }}
+    .lesson-body blockquote {{ margin: 18px 0; padding: 14px 16px; border-left: 4px solid var(--accent); background: var(--accent-soft); color: var(--ink); border-radius: 0 8px 8px 0; }}
     .lesson-body pre {{ overflow: auto; padding: 16px; border-radius: 8px; background: #111827; color: #e5e7eb; }}
     .lesson-body code {{ padding: 0.08rem 0.25rem; border-radius: 4px; background: #eef2f7; }}
     .lesson-body pre code {{ padding: 0; background: transparent; }}
-    @media (max-width: 980px) {{ .app-shell {{ grid-template-columns: 1fr; }} .sidebar {{ position: static; height: auto; }} .unit-nav {{ grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }} .topbar-row {{ display: grid; }} }}
+    @media (max-width: 980px) {{ .course-shell {{ grid-template-columns: 1fr; }} .unit-sidebar {{ position: static; max-height: 360px; }} .unit-nav {{ grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }} }}
+    @media (max-width: 720px) {{ .top-nav {{ align-items: flex-start; flex-direction: column; justify-content: flex-start; }} .brand-mark {{ position: static; }} .nav-pills {{ border-radius: 8px; }} .course-shell {{ padding-inline: 16px; }} }}
   </style>
 </head>
 <body>
-  <div class="app-shell">
-    <aside class="sidebar"><p class="brand">Course Navigation</p><a class="dashboard-link" href="../index.html">Dashboard</a>{quiz_sidebar_link}<nav class="unit-nav" aria-label="Course units">{nav}</nav></aside>
-    <main class="main">
-      <header class="topbar"><div class="topbar-row"><div><h1>{title}</h1><p>{summary}</p></div><div><a class="topbar-dashboard-link" href="../index.html">Dashboard</a>{quiz_topbar_link}</div></div></header>
-      <div class="content-grid"><section aria-label="Lesson content">{sections}</section></div>
+  <div>
+    <header class="top-nav">
+      <div class="brand-mark">Agentic Tutor</div>
+      <nav class="nav-pills" aria-label="Main navigation">
+        <a class="active" href="../index.html">Dashboard</a>
+        <a href="quiz.html">Quiz</a>
+        <a href="../agent_chat.html">AI assistant</a>
+      </nav>
+    </header>
+    <main class="course-shell">
+      <aside class="unit-sidebar"><h2>Course units</h2><nav class="unit-nav" aria-label="Course units">{nav}</nav></aside>
+      <section>
+        <header class="course-hero"><h1>{title}</h1><p>{summary}</p><div class="hero-actions"><a href="../index.html">Dashboard</a>{quiz_topbar_link}</div></header>
+        <div aria-label="Lesson content">{sections}</div>
+      </section>
     </main>
   </div>
   <script>
@@ -659,7 +678,6 @@ def _build_static_course_page_html(
 """.format(
         title=escape(course_title),
         summary=escape(course_summary),
-        quiz_sidebar_link=quiz_sidebar_link,
         quiz_topbar_link=quiz_topbar_link,
         nav="".join(nav_items),
         sections="".join(sections),
@@ -701,6 +719,9 @@ def _ensure_course_page_for_session(session_dir: Path) -> dict[str, object]:
         "session_name": session_dir.name,
         "category": _classify_course_session(session_dir),
         "unit_count": len(units),
+        "progress_percent": _course_progress_percent(len(units), quiz_path.exists()),
+        "achievement_count": _course_achievement_count(len(units), quiz_path.exists()),
+        "quiz_available": quiz_path.exists(),
         "course_page": page_path,
         "updated_at": datetime.fromtimestamp(
             session_dir.stat().st_mtime,
@@ -721,65 +742,32 @@ def _build_agent_chat_html(chat_url: str) -> str:
     * {{ box-sizing: border-box; }}
     :root {{
       color-scheme: light;
-      --bg: #f6f8fb;
+      --bg: #f4f1ea;
       --panel: #ffffff;
-      --ink: #182230;
-      --muted: #667085;
-      --line: #d9e1ec;
-      --nav: #152238;
-      --nav-muted: #b9c6d8;
-      --accent: #2f6fed;
-      --accent-soft: #eef4ff;
+      --ink: #181a1f;
+      --muted: #6f756f;
+      --line: #ddd8cc;
+      --accent: #f05a43;
+      --accent-dark: #d9432f;
+      --accent-soft: #fff0eb;
+      --shadow: 0 18px 38px rgba(26, 22, 18, 0.11);
     }}
     body {{
       margin: 0;
       min-height: 100vh;
-      background: linear-gradient(180deg, #ffffff 0, var(--bg) 300px), var(--bg);
+      background: var(--bg);
       color: var(--ink);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       text-rendering: optimizeLegibility;
     }}
-    .shell {{
-      min-height: 100vh;
-      display: grid;
-      grid-template-columns: 256px minmax(0, 1fr);
-    }}
-    aside {{
-      background: var(--nav);
-      color: white;
-      padding: 26px 18px;
-      border-right: 1px solid rgba(255,255,255,0.08);
-    }}
-    aside h1 {{
-      margin: 0 0 24px;
-      font-size: 1.05rem;
-      letter-spacing: 0;
-      line-height: 1.2;
-    }}
-    aside a {{
-      display: block;
-      padding: 11px 12px;
-      border-radius: 8px;
-      color: #e5edf8;
-      text-decoration: none;
-      font-weight: 800;
-      font-size: 0.94rem;
-    }}
-    aside a:hover, aside a.active {{
-      background: rgba(255,255,255,0.12);
-    }}
-    main {{
-      min-width: 0;
-      min-height: 100vh;
-      display: grid;
-      grid-template-rows: auto 1fr;
-    }}
-    .topbar {{
-      background: rgba(255,255,255,0.94);
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid var(--line);
-      padding: 30px clamp(20px, 4vw, 52px);
-    }}
+    .app-frame {{ min-height: 100vh; display: grid; grid-template-rows: 86px 1fr; }}
+    .top-nav {{ display: flex; align-items: center; justify-content: center; gap: 18px; padding: 18px clamp(20px, 4vw, 54px); background: rgba(255,255,255,0.74); border-bottom: 1px solid var(--line); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 10; }}
+    .brand-mark {{ position: absolute; left: clamp(20px, 4vw, 54px); font-weight: 950; font-size: 1.2rem; letter-spacing: 0; }}
+    .nav-pills {{ display: flex; flex-wrap: wrap; gap: 8px; padding: 6px; border-radius: 999px; background: #ebe7dc; }}
+    .nav-pills a {{ min-height: 38px; padding: 9px 16px; border-radius: 999px; color: var(--ink); text-decoration: none; font-weight: 850; font-size: 0.92rem; }}
+    .nav-pills a.active, .nav-pills a:hover {{ background: #181a1f; color: white; }}
+    .chat-layout {{ padding: 26px clamp(20px, 4vw, 54px) 54px; }}
+    .topbar {{ background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 26px; box-shadow: var(--shadow); margin-bottom: 22px; }}
     .topbar h2 {{
       margin: 0;
       font-size: clamp(1.8rem, 3vw, 2.65rem);
@@ -815,10 +803,7 @@ def _build_agent_chat_html(chat_url: str) -> str:
       background: var(--accent);
       color: white;
     }}
-    .frame-wrap {{
-      min-height: 0;
-      padding: 30px clamp(20px, 4vw, 52px) 54px;
-    }}
+    .frame-wrap {{ min-height: 0; }}
     iframe {{
       width: 100%;
       height: calc(100vh - 176px);
@@ -826,25 +811,26 @@ def _build_agent_chat_html(chat_url: str) -> str:
       border: 1px solid var(--line);
       border-radius: 8px;
       background: white;
+      box-shadow: var(--shadow);
     }}
     @media (max-width: 760px) {{
-      .shell {{ grid-template-columns: 1fr; }}
-      aside {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; }}
-      aside h1 {{ margin: 0; }}
+      .top-nav {{ align-items: flex-start; flex-direction: column; justify-content: flex-start; }}
+      .brand-mark {{ position: static; }}
+      .nav-pills {{ border-radius: 8px; }}
       iframe {{ height: calc(100vh - 230px); min-height: 520px; }}
     }}
   </style>
 </head>
 <body>
-  <div class="shell">
-    <aside>
-      <h1>Agentic Tutor</h1>
-      <nav aria-label="Chat navigation">
+  <div class="app-frame">
+    <header class="top-nav">
+      <div class="brand-mark">Agentic Tutor</div>
+      <nav class="nav-pills" aria-label="Main navigation">
         <a href="index.html">Dashboard</a>
-        <a class="active" href="agent_chat.html">Chat with tt</a>
+        <a class="active" href="agent_chat.html">AI assistant</a>
       </nav>
-    </aside>
-    <main>
+    </header>
+    <main class="chat-layout">
       <header class="topbar">
         <h2>ADK Web: tt</h2>
         <p>This page opens the ADK web interface for the agent app named <strong>tt</strong>.</p>
@@ -872,16 +858,30 @@ def _build_dashboard_html(courses: list[dict[str, object]], chat_url: str) -> st
             if course.get("category") != category:
                 continue
             href = f"{course['session_name']}/course_page.html"
+            session_name = str(course["session_name"])
+            unit_count = int(course.get("unit_count", 0))
+            progress = 0
+            achievements = 0
+            quiz_label = "Quiz ready" if course.get("quiz_available") else "Quiz pending"
             cards.append(
-                "<a class=\"course-card\" href=\"{href}\">"
-                "<span class=\"course-status\">Published</span>"
+                "<a class=\"course-card\" href=\"{href}\" data-session=\"{session_name}\" "
+                "data-units=\"{unit_count}\" data-quiz=\"{quiz_available}\">"
+                "<div class=\"card-topline\"><span>{category}</span><span>{quiz_label}</span></div>"
                 "<h2>{title}</h2>"
-                "<p>{unit_count} unit(s)</p>"
-                "<small>Updated {updated_at}</small>"
+                "<p>{unit_count} learning unit(s)</p>"
+                "<div class=\"progress-row\"><strong class=\"course-progress-value\">{progress}%</strong><span>complete</span></div>"
+                "<div class=\"progress-track\"><span class=\"course-progress-fill\" style=\"width:{progress}%\"></span></div>"
+                "<small><span class=\"course-achievements\">{achievements}</span> achievement(s) • Updated {updated_at}</small>"
                 "</a>".format(
                     href=escape(str(href), quote=True),
+                    session_name=escape(session_name, quote=True),
+                    quiz_available="true" if course.get("quiz_available") else "false",
+                    category="Project" if course.get("category") == "project" else "Lesson",
+                    quiz_label=quiz_label,
                     title=escape(str(course["title"])),
-                    unit_count=course["unit_count"],
+                    unit_count=unit_count,
+                    progress=progress,
+                    achievements=achievements,
                     updated_at=escape(str(course["updated_at"])),
                 )
             )
@@ -898,6 +898,10 @@ def _build_dashboard_html(courses: list[dict[str, object]], chat_url: str) -> st
     project_cards = render_cards("project")
     theoretical_count = sum(1 for course in courses if course.get("category") == "theoretical")
     project_count = sum(1 for course in courses if course.get("category") == "project")
+    quiz_count = sum(1 for course in courses if course.get("quiz_available"))
+    total_units = sum(int(course.get("unit_count", 0)) for course in courses)
+    average_progress = 0
+    total_achievements = 0
 
     add_card = (
         "<a class=\"add-card\" href=\"agent_chat.html\">"
@@ -918,93 +922,247 @@ def _build_dashboard_html(courses: list[dict[str, object]], chat_url: str) -> st
   <style>
     :root {{
       color-scheme: light;
-      --bg: #f6f8fb;
+      --bg: #f4f1ea;
       --panel: #ffffff;
-      --ink: #182230;
-      --muted: #667085;
-      --line: #d9e1ec;
-      --nav: #152238;
-      --nav-muted: #b9c6d8;
-      --accent: #2f6fed;
-      --accent-soft: #eef4ff;
-      --green: #0f766e;
-      --shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+      --ink: #181a1f;
+      --muted: #6f756f;
+      --line: #ddd8cc;
+      --accent: #f05a43;
+      --accent-dark: #d9432f;
+      --accent-soft: #fff0eb;
+      --sidebar: #f9f7f0;
+      --success: #2d7a55;
+      --shadow: 0 18px 38px rgba(26, 22, 18, 0.11);
     }}
     * {{ box-sizing: border-box; }}
-    body {{ margin: 0; background: linear-gradient(180deg, #ffffff 0, var(--bg) 300px), var(--bg); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-rendering: optimizeLegibility; }}
-    .shell {{ min-height: 100vh; display: grid; grid-template-columns: 256px minmax(0, 1fr); }}
-    aside {{ background: var(--nav); color: white; padding: 26px 18px; border-right: 1px solid rgba(255,255,255,0.08); }}
-    aside h1 {{ margin: 0 0 24px; font-size: 1.05rem; letter-spacing: 0; line-height: 1.2; }}
-    aside a {{ display: block; padding: 11px 12px; border-radius: 8px; color: #e5edf8; text-decoration: none; font-weight: 800; font-size: 0.94rem; }}
-    aside a.active, aside a:hover {{ background: rgba(255,255,255,0.12); }}
-    main {{ min-width: 0; }}
-    .topbar {{ background: rgba(255,255,255,0.94); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: 30px clamp(20px, 4vw, 52px); }}
-    .topbar h2 {{ margin: 0; font-size: clamp(1.8rem, 3vw, 2.65rem); letter-spacing: 0; line-height: 1.08; }}
-    .topbar p {{ margin: 9px 0 0; color: var(--muted); max-width: 760px; line-height: 1.55; }}
-    .dashboard-content {{ display: grid; gap: 34px; padding: 30px clamp(20px, 4vw, 52px) 54px; }}
-    .course-section {{ display: grid; gap: 16px; }}
-    .section-heading {{ display: flex; align-items: end; justify-content: space-between; gap: 12px; }}
-    .section-heading h3 {{ margin: 0; font-size: 1.22rem; letter-spacing: 0; line-height: 1.2; }}
-    .section-heading p {{ margin: 5px 0 0; color: var(--muted); line-height: 1.45; }}
-    .section-count {{ color: var(--muted); font-weight: 800; font-size: 0.9rem; white-space: nowrap; }}
-    .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 18px; }}
-    .course-card, .add-card {{ min-height: 188px; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); text-decoration: none; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease; }}
-    .course-card:hover, .add-card:hover {{ transform: translateY(-2px); border-color: rgba(47, 111, 237, 0.45); box-shadow: var(--shadow); }}
-    .course-card h2, .add-card h2 {{ margin: 16px 0 8px; font-size: 1.12rem; letter-spacing: 0; line-height: 1.25; overflow-wrap: anywhere; }}
-    .course-card p, .add-card p {{ margin: 0; color: var(--muted); line-height: 1.45; }}
-    .course-card small {{ color: var(--muted); font-weight: 700; }}
-    .course-status {{ align-self: flex-start; padding: 5px 9px; border-radius: 999px; background: #ecfdf3; color: var(--green); font-size: 0.76rem; font-weight: 900; }}
-    .add-card {{ border-style: dashed; background: linear-gradient(180deg, #f7faff 0, var(--accent-soft) 100%); }}
-    .empty-section {{ min-height: 150px; padding: 20px; border: 1px dashed var(--line); border-radius: 8px; background: rgba(255,255,255,0.72); color: var(--muted); }}
+    html, body {{ max-width: 100%; overflow-x: hidden; }}
+    body {{ margin: 0; background: var(--bg); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-rendering: optimizeLegibility; }}
+    .app-frame {{ min-height: 100vh; display: grid; grid-template-rows: 86px 1fr; }}
+    .top-nav {{ display: flex; align-items: center; gap: 18px; padding: 18px clamp(20px, 4vw, 54px); background: rgba(255,255,255,0.74); border-bottom: 1px solid var(--line); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 10; }}
+    .brand-mark {{ margin-right: auto; font-weight: 950; font-size: 1.2rem; letter-spacing: 0; }}
+    .nav-pills {{ display: flex; flex-wrap: wrap; gap: 8px; padding: 6px; border-radius: 999px; background: #ebe7dc; }}
+    .nav-pills a {{ min-height: 38px; padding: 9px 16px; border-radius: 999px; color: var(--ink); text-decoration: none; font-weight: 850; font-size: 0.92rem; }}
+    .nav-pills a.active, .nav-pills a:hover {{ background: #181a1f; color: white; }}
+    .dashboard-layout {{ min-width: 0; display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 24px; padding: 26px clamp(20px, 4vw, 54px) 54px; }}
+    .profile-panel, .course-board, .progress-panel, .assistant-panel {{ background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }}
+    .profile-panel {{ padding: 24px; align-self: start; display: grid; gap: 22px; }}
+    .avatar-ring {{ width: 116px; height: 116px; border-radius: 50%; border: 6px solid var(--accent); display: grid; place-items: center; background: var(--accent-soft); font-size: 2.4rem; font-weight: 950; color: var(--accent-dark); }}
+    .profile-panel h1 {{ margin: 0; font-size: 1.7rem; letter-spacing: 0; line-height: 1.1; }}
+    .profile-panel p {{ margin: 6px 0 0; color: var(--muted); line-height: 1.5; }}
+    .mini-stats {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }}
+    .mini-stat {{ padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: #fbfaf6; }}
+    .mini-stat strong {{ display: block; font-size: 1.8rem; line-height: 1; }}
+    .mini-stat span {{ color: var(--muted); font-size: 0.88rem; }}
+    .main-stack {{ min-width: 0; display: grid; gap: 24px; }}
+    .course-board {{ min-width: 0; overflow: hidden; padding: 26px; background: var(--accent); color: white; }}
+    .board-heading {{ display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }}
+    .board-heading h2 {{ margin: 0; font-size: clamp(1.8rem, 3vw, 2.55rem); letter-spacing: 0; }}
+    .board-heading a {{ color: var(--accent); background: white; text-decoration: none; border-radius: 999px; padding: 10px 14px; font-weight: 900; }}
+    .rail-frame {{ position: relative; }}
+    .rail-frame::before, .rail-frame::after {{ content: ""; position: absolute; top: 0; bottom: 8px; width: 42px; z-index: 2; pointer-events: none; opacity: 1; transition: opacity 180ms ease; }}
+    .rail-frame::before {{ left: 0; background: linear-gradient(90deg, var(--accent), rgba(240, 90, 67, 0)); }}
+    .rail-frame::after {{ right: 0; background: linear-gradient(270deg, var(--accent), rgba(240, 90, 67, 0)); }}
+    .rail-frame.at-start::before, .rail-frame.at-end::after {{ opacity: 0; }}
+    .course-rail {{ max-width: 100%; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(260px, 320px); gap: 18px; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 8px; scroll-snap-type: x proximity; }}
+    .course-card, .add-card {{ min-height: 245px; scroll-snap-align: start; display: flex; flex-direction: column; justify-content: space-between; padding: 22px; border: 1px solid rgba(255,255,255,0.38); border-radius: 8px; background: white; color: var(--ink); text-decoration: none; box-shadow: 0 14px 30px rgba(126, 41, 28, 0.16); transition: transform 160ms ease, box-shadow 160ms ease; }}
+    .course-card:hover, .add-card:hover {{ transform: translateY(-4px); box-shadow: 0 22px 36px rgba(126, 41, 28, 0.22); }}
+    .card-topline {{ display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 0.78rem; font-weight: 850; text-transform: uppercase; }}
+    .course-card h2, .add-card h2 {{ margin: 22px 0 8px; font-size: 1.22rem; letter-spacing: 0; line-height: 1.2; overflow-wrap: anywhere; }}
+    .course-card p, .add-card p {{ margin: 0; color: var(--muted); }}
+    .progress-row {{ display: flex; align-items: baseline; gap: 8px; margin-top: 20px; }}
+    .progress-row strong {{ font-size: 1.75rem; }}
+    .progress-row span {{ color: var(--muted); font-weight: 750; }}
+    .progress-track {{ height: 8px; border-radius: 999px; background: #e8e2d7; overflow: hidden; }}
+    .progress-track span {{ display: block; height: 100%; border-radius: inherit; background: var(--accent); }}
+    .course-card small {{ color: var(--muted); font-weight: 750; }}
+    .add-card {{ background: #fff9f6; border-style: dashed; }}
+    .plus {{ width: 48px; height: 48px; display: grid; place-items: center; border-radius: 8px; background: var(--accent); color: white; font-size: 1.9rem; line-height: 1; }}
+    .insights-grid {{ display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr); gap: 24px; }}
+    .progress-panel, .assistant-panel {{ padding: 24px; }}
+    .progress-panel h3, .assistant-panel h3 {{ margin: 0 0 18px; font-size: 1.3rem; letter-spacing: 0; }}
+    .bar-list {{ display: grid; gap: 14px; }}
+    .bar-item {{ display: grid; grid-template-columns: 96px minmax(0, 1fr) 72px; gap: 12px; align-items: center; color: var(--muted); font-weight: 800; }}
+    .bar-track {{ height: 12px; border-radius: 999px; background: #f0eee6; overflow: hidden; }}
+    .bar-fill {{ display: block; height: 100%; width: 0%; background: var(--accent); border-radius: inherit; transition: width 180ms ease; }}
+    .achievement-list {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }}
+    .achievement {{ padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: #fbfaf6; }}
+    .achievement strong {{ display: block; font-size: 1.55rem; }}
+    .achievement span {{ color: var(--muted); font-size: 0.88rem; }}
+    .assistant-panel {{ background: #f8e9ed; display: grid; align-content: space-between; min-height: 280px; }}
+    .assistant-panel p {{ color: var(--muted); line-height: 1.5; }}
+    .assistant-panel a {{ justify-self: start; padding: 11px 15px; border-radius: 999px; background: var(--ink); color: white; text-decoration: none; font-weight: 900; }}
+    .empty-section {{ min-height: 150px; padding: 20px; border: 1px dashed var(--line); border-radius: 8px; background: white; color: var(--muted); }}
     .empty-section h3 {{ margin: 0 0 6px; color: var(--ink); font-size: 1rem; letter-spacing: 0; }}
     .empty-section p {{ margin: 0; }}
-    .plus {{ width: 46px; height: 46px; display: grid; place-items: center; border-radius: 8px; background: var(--accent); color: white; font-size: 1.8rem; line-height: 1; box-shadow: 0 10px 22px rgba(47, 111, 237, 0.24); }}
-    @media (max-width: 760px) {{ .shell {{ grid-template-columns: 1fr; }} aside {{ display: flex; gap: 8px; align-items: center; justify-content: space-between; }} aside h1 {{ margin: 0; }} .section-heading {{ align-items: flex-start; flex-direction: column; }} .grid {{ grid-template-columns: 1fr; }} }}
+    @media (max-width: 980px) {{ .dashboard-layout, .insights-grid {{ grid-template-columns: 1fr; }} .course-rail {{ grid-auto-columns: minmax(240px, 82vw); }} }}
+    @media (max-width: 720px) {{ .top-nav {{ align-items: flex-start; flex-direction: column; justify-content: flex-start; }} .brand-mark {{ position: static; }} .nav-pills {{ border-radius: 8px; }} .dashboard-layout {{ padding-inline: 16px; }} .achievement-list {{ grid-template-columns: 1fr; }} }}
   </style>
 </head>
 <body>
-  <div class="shell">
-    <aside>
-      <h1>Agentic Tutor</h1>
-      <nav aria-label="Dashboard navigation">
+  <div class="app-frame">
+    <header class="top-nav">
+      <div class="brand-mark">Agentic Tutor</div>
+      <nav class="nav-pills" aria-label="Main navigation">
         <a class="active" href="index.html">Dashboard</a>
-        <a href="agent_chat.html">Agent Chat</a>
+        <a href="agent_chat.html">AI assistant</a>
       </nav>
-    </aside>
-    <main>
-      <header class="topbar">
-        <h2>Dashboard</h2>
-        <p>Course cards are built from saved lessons in long-term memory.</p>
-      </header>
-      <div class="dashboard-content">
-        <section class="course-section" aria-labelledby="theoretical-heading">
-          <div class="section-heading">
-            <div>
-              <h3 id="theoretical-heading">Theoretical Lessons</h3>
-              <p>Concept-focused courses and study paths.</p>
-            </div>
-            <span class="section-count">{theoretical_count} course(s)</span>
+    </header>
+    <main class="dashboard-layout">
+      <aside class="profile-panel" aria-label="Learner summary">
+        <div class="avatar-ring">AT</div>
+        <div>
+          <h1>Welcome back</h1>
+          <p>Your generated lessons, projects, quizzes, and achievements are organized here.</p>
+        </div>
+        <div class="mini-stats">
+          <div class="mini-stat"><strong>{course_count}</strong><span>courses</span></div>
+          <div class="mini-stat"><strong>{total_units}</strong><span>units</span></div>
+          <div class="mini-stat"><strong>{quiz_count}</strong><span>quizzes</span></div>
+          <div class="mini-stat"><strong data-stat="avg-progress">{average_progress}%</strong><span>avg progress</span></div>
+        </div>
+      </aside>
+      <div class="main-stack">
+        <section class="course-board" aria-labelledby="courses-heading">
+          <div class="board-heading">
+            <h2 id="courses-heading">Your courses</h2>
+            <a href="agent_chat.html">Add project/lesson</a>
           </div>
-          <div class="grid">{theoretical_cards}</div>
+          <div class="rail-frame at-start"><div class="course-rail">{add_card}{project_cards}{theoretical_cards}</div></div>
         </section>
-        <section class="course-section" aria-labelledby="projects-heading">
-          <div class="section-heading">
+        <section class="insights-grid" id="progress">
+          <div class="progress-panel">
             <div>
-              <h3 id="projects-heading">Projects</h3>
-              <p>Applied courses with hands-on work or final builds.</p>
+              <h3>Study progress</h3>
+              <div class="bar-list">
+                <div class="bar-item"><span>Courses</span><div class="bar-track"><div class="bar-fill" data-bar="courses"></div></div><strong data-stat="completed-courses">0/{course_count}</strong></div>
+                <div class="bar-item"><span>Units</span><div class="bar-track"><div class="bar-fill" data-bar="units"></div></div><strong data-stat="completed-units">0/{total_units}</strong></div>
+                <div class="bar-item"><span>Quizzes</span><div class="bar-track"><div class="bar-fill" data-bar="quizzes"></div></div><strong data-stat="completed-quizzes">0/{quiz_count}</strong></div>
+              </div>
+              <div class="achievement-list">
+                <div class="achievement"><strong data-stat="achievements">{total_achievements}</strong><span>achievements earned</span></div>
+                <div class="achievement"><strong>{project_count}</strong><span>project paths</span></div>
+                <div class="achievement"><strong>{theoretical_count}</strong><span>lesson paths</span></div>
+              </div>
             </div>
-            <span class="section-count">{project_count} course(s)</span>
           </div>
-          <div class="grid">{add_card}{project_cards}</div>
+          <div class="assistant-panel" id="support">
+            <div>
+              <h3>AI assistant</h3>
+              <p>Start a new course, create a quiz, rebuild pages, or ask the root agent to revise your learning path.</p>
+            </div>
+            <a href="agent_chat.html">Open assistant</a>
+          </div>
         </section>
       </div>
     </main>
   </div>
+  <script>
+    function readQuizProgress(sessionName) {{
+      try {{
+        return JSON.parse(localStorage.getItem("tt.quizProgress." + sessionName)) || {{}};
+      }} catch (error) {{
+        return {{}};
+      }}
+    }}
+
+    function setText(selector, value) {{
+      const element = document.querySelector(selector);
+      if (element) {{
+        element.textContent = value;
+      }}
+    }}
+
+    function setBar(name, percent) {{
+      const element = document.querySelector(`[data-bar="${{name}}"]`);
+      if (element) {{
+        element.style.width = `${{Math.max(0, Math.min(100, percent))}}%`;
+      }}
+    }}
+
+    function applyQuizProgress() {{
+      const cards = Array.from(document.querySelectorAll(".course-card[data-session]"));
+      let totalUnits = 0;
+      let completedUnits = 0;
+      let completedCourses = 0;
+      let quizReadyCourses = 0;
+      const countedSessions = new Set();
+
+      cards.forEach((card) => {{
+        const unitCount = Number(card.dataset.units) || 0;
+        const hasQuiz = card.dataset.quiz === "true";
+        const progress = hasQuiz ? readQuizProgress(card.dataset.session) : {{}};
+        const completed = Math.min(
+          unitCount,
+          Object.values(progress).filter(Boolean).length
+        );
+        const percent = unitCount > 0 ? Math.round((completed / unitCount) * 100) : 0;
+
+        if (!countedSessions.has(card.dataset.session)) {{
+          countedSessions.add(card.dataset.session);
+          totalUnits += unitCount;
+          completedUnits += completed;
+          if (hasQuiz) {{
+            quizReadyCourses += 1;
+          }}
+          if (unitCount > 0 && completed === unitCount) {{
+            completedCourses += 1;
+          }}
+        }}
+
+        const value = card.querySelector(".course-progress-value");
+        const fill = card.querySelector(".course-progress-fill");
+        const achievements = card.querySelector(".course-achievements");
+        if (value) {{
+          value.textContent = `${{percent}}%`;
+        }}
+        if (fill) {{
+          fill.style.width = `${{percent}}%`;
+        }}
+        if (achievements) {{
+          achievements.textContent = String(completed);
+        }}
+      }});
+
+      const courseCount = countedSessions.size;
+      const averageProgress = totalUnits > 0 ? Math.round((completedUnits / totalUnits) * 100) : 0;
+      const completedQuizCourses = completedCourses;
+
+      setText('[data-stat="avg-progress"]', `${{averageProgress}}%`);
+      setText('[data-stat="completed-courses"]', `${{completedCourses}}/${{courseCount}}`);
+      setText('[data-stat="completed-units"]', `${{completedUnits}}/${{totalUnits}}`);
+      setText('[data-stat="completed-quizzes"]', `${{completedQuizCourses}}/${{quizReadyCourses}}`);
+      setText('[data-stat="achievements"]', String(completedUnits));
+
+      setBar("courses", courseCount ? (completedCourses / courseCount) * 100 : 0);
+      setBar("units", totalUnits ? (completedUnits / totalUnits) * 100 : 0);
+      setBar("quizzes", quizReadyCourses ? (completedQuizCourses / quizReadyCourses) * 100 : 0);
+    }}
+
+    window.addEventListener("storage", applyQuizProgress);
+    applyQuizProgress();
+
+    document.querySelectorAll(".rail-frame").forEach((frame) => {{
+      const rail = frame.querySelector(".course-rail");
+      function updateRailFade() {{
+        const maxScroll = rail.scrollWidth - rail.clientWidth;
+        frame.classList.toggle("at-start", rail.scrollLeft <= 2);
+        frame.classList.toggle("at-end", rail.scrollLeft >= maxScroll - 2);
+      }}
+      rail.addEventListener("scroll", updateRailFade, {{ passive: true }});
+      window.addEventListener("resize", updateRailFade);
+      updateRailFade();
+    }});
+  </script>
 </body>
 </html>
 """.format(
         theoretical_cards=theoretical_cards,
         project_cards=project_cards,
+        course_count=len(courses),
+        total_units=total_units,
+        quiz_count=quiz_count,
+        average_progress=average_progress,
+        total_achievements=total_achievements,
         theoretical_count=theoretical_count,
         project_count=project_count,
         add_card=add_card,
