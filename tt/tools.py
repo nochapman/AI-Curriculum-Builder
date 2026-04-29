@@ -535,7 +535,6 @@ def _build_static_course_page_html(
     quiz_available: bool = False,
 ) -> str:
     nav_items: list[str] = []
-    module_items: list[str] = []
     sections: list[str] = []
     quiz_sidebar_link = (
         '<a class="quiz-link" href="quiz.html">Quiz</a>'
@@ -559,16 +558,6 @@ def _build_static_course_page_html(
                 unit_id=unit_id,
                 number=index + 1,
                 title=escape(unit["title"]),
-            )
-        )
-        module_items.append(
-            "<li><button type=\"button\" class=\"module-button\" data-target=\"{unit_id}\">"
-            "<span>{number:02d}</span><strong>{title}</strong><small>{source}</small>"
-            "</button></li>".format(
-                unit_id=unit_id,
-                number=index + 1,
-                title=escape(unit["title"]),
-                source=escape(unit["filename"]),
             )
         )
         sections.append(
@@ -614,9 +603,9 @@ def _build_static_course_page_html(
     .quiz-link:hover {{ background: rgba(255,255,255,0.12); }}
     .unit-nav {{ display: grid; gap: 8px; }}
     .unit-link {{ width: 100%; min-height: 44px; display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 8px; align-items: center; padding: 9px 10px; border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; background: transparent; color: white; text-align: left; cursor: pointer; }}
-    .unit-link span:last-child, .module-button strong, .module-button small {{ overflow-wrap: anywhere; }}
+    .unit-link span:last-child {{ overflow-wrap: anywhere; }}
     .unit-link.active {{ background: white; color: var(--nav); border-color: white; font-weight: 700; }}
-    .unit-number, .module-button span {{ font-variant-numeric: tabular-nums; }}
+    .unit-number {{ font-variant-numeric: tabular-nums; }}
     .main {{ min-width: 0; display: grid; grid-template-rows: auto 1fr; }}
     .topbar {{ background: var(--panel); border-bottom: 1px solid var(--line); padding: 18px clamp(18px, 4vw, 38px); }}
     .topbar-row {{ display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }}
@@ -626,15 +615,8 @@ def _build_static_course_page_html(
     .topbar-quiz-link:hover {{ background: var(--accent-soft); }}
     .topbar p {{ margin: 6px 0 0; color: var(--muted); max-width: 860px; }}
     h1 {{ margin: 0; font-size: clamp(1.45rem, 3vw, 2.2rem); letter-spacing: 0; }}
-    .content-grid {{ display: grid; grid-template-columns: minmax(220px, 310px) minmax(0, 1fr); gap: 22px; padding: 22px clamp(18px, 4vw, 38px) 42px; align-items: start; }}
-    .modules, .lesson-panel {{ background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }}
-    .modules h2 {{ margin: 0; padding: 16px 18px; border-bottom: 1px solid var(--line); font-size: 1rem; letter-spacing: 0; }}
-    .module-list {{ margin: 0; padding: 0; list-style: none; }}
-    .module-button {{ width: 100%; min-height: 68px; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; padding: 12px 16px; border: 0; border-bottom: 1px solid var(--line); background: white; color: var(--ink); text-align: left; cursor: pointer; }}
-    .module-button:hover {{ background: var(--accent-soft); }}
-    .module-button span {{ color: var(--success); font-weight: 800; }}
-    .module-button strong, .module-button small {{ display: block; }}
-    .module-button small {{ margin-top: 3px; color: var(--muted); }}
+    .content-grid {{ padding: 22px clamp(18px, 4vw, 38px) 42px; }}
+    .lesson-panel {{ background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }}
     .lesson-header {{ padding: clamp(18px, 3vw, 30px); border-bottom: 1px solid var(--line); background: #fbfcff; }}
     .lesson-header p {{ margin: 0 0 5px; color: var(--muted); font-size: 0.92rem; }}
     .lesson-header h2 {{ margin: 0; font-size: clamp(1.25rem, 2.2vw, 1.75rem); letter-spacing: 0; }}
@@ -646,7 +628,7 @@ def _build_static_course_page_html(
     .lesson-body pre {{ overflow: auto; padding: 14px; border-radius: 8px; background: #111827; color: #e5e7eb; }}
     .lesson-body code {{ padding: 0.08rem 0.25rem; border-radius: 4px; background: #eef2f7; }}
     .lesson-body pre code {{ padding: 0; background: transparent; }}
-    @media (max-width: 980px) {{ .app-shell {{ grid-template-columns: 1fr; }} .sidebar {{ position: static; height: auto; }} .unit-nav {{ grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }} .topbar-row {{ display: grid; }} .content-grid {{ grid-template-columns: 1fr; }} }}
+    @media (max-width: 980px) {{ .app-shell {{ grid-template-columns: 1fr; }} .sidebar {{ position: static; height: auto; }} .unit-nav {{ grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }} .topbar-row {{ display: grid; }} }}
   </style>
 </head>
 <body>
@@ -654,7 +636,7 @@ def _build_static_course_page_html(
     <aside class="sidebar"><p class="brand">Course Navigation</p><a class="dashboard-link" href="../index.html">Dashboard</a>{quiz_sidebar_link}<nav class="unit-nav" aria-label="Course units">{nav}</nav></aside>
     <main class="main">
       <header class="topbar"><div class="topbar-row"><div><h1>{title}</h1><p>{summary}</p></div><div><a class="topbar-dashboard-link" href="../index.html">Dashboard</a>{quiz_topbar_link}</div></div></header>
-      <div class="content-grid"><section class="modules" aria-label="Modules"><h2>Modules</h2><ol class="module-list">{modules}</ol></section><section aria-label="Lesson content">{sections}</section></div>
+      <div class="content-grid"><section aria-label="Lesson content">{sections}</section></div>
     </main>
   </div>
   <script>
@@ -676,7 +658,6 @@ def _build_static_course_page_html(
         quiz_sidebar_link=quiz_sidebar_link,
         quiz_topbar_link=quiz_topbar_link,
         nav="".join(nav_items),
-        modules="".join(module_items),
         sections="".join(sections),
     )
 
@@ -730,28 +711,353 @@ def _build_agent_chat_html(chat_url: str) -> str:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Agent Chat</title>
+  <title>Chat with tt</title>
   <style>
     * {{ box-sizing: border-box; }}
-    body {{ margin: 0; min-height: 100vh; background: #f3f5f8; color: #1f2937; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
-    header {{ min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px clamp(16px, 4vw, 34px); background: #ffffff; border-bottom: 1px solid #d8dee8; }}
-    h1 {{ margin: 0; font-size: 1.1rem; letter-spacing: 0; }}
-    nav {{ display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }}
-    a {{ color: #2563eb; font-weight: 800; text-decoration: none; }}
-    .nav-link {{ padding: 8px 12px; border: 1px solid #d8dee8; border-radius: 8px; background: #ffffff; }}
-    .nav-link:hover {{ background: #e8f0ff; }}
-    iframe {{ display: block; width: 100%; height: calc(100vh - 64px); border: 0; background: #ffffff; }}
+    :root {{
+      color-scheme: light;
+      --bg: #f3f5f8;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #667085;
+      --line: #d8dee8;
+      --nav: #243447;
+      --accent: #2563eb;
+      --accent-soft: #e8f0ff;
+      --good: #0f766e;
+      --bad: #b42318;
+    }}
+    body {{
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }}
+    .shell {{
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+    }}
+    aside {{
+      background: var(--nav);
+      color: white;
+      padding: 24px 18px;
+    }}
+    aside h1 {{
+      margin: 0 0 24px;
+      font-size: 1.1rem;
+      letter-spacing: 0;
+    }}
+    aside a {{
+      display: block;
+      padding: 10px 12px;
+      border-radius: 8px;
+      color: white;
+      text-decoration: none;
+      font-weight: 800;
+    }}
+    aside a:hover, aside a.active {{
+      background: rgba(255,255,255,0.12);
+    }}
+    main {{
+      min-width: 0;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }}
+    .topbar {{
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      padding: 22px clamp(18px, 4vw, 42px);
+    }}
+    .topbar h2 {{
+      margin: 0;
+      font-size: clamp(1.45rem, 3vw, 2.1rem);
+      letter-spacing: 0;
+    }}
+    .topbar p {{
+      margin: 6px 0 0;
+      color: var(--muted);
+    }}
+    .chat-window {{
+      min-height: 0;
+      padding: 22px clamp(18px, 4vw, 42px);
+      overflow: auto;
+    }}
+    .messages {{
+      max-width: 920px;
+      display: grid;
+      gap: 12px;
+    }}
+    .message {{
+      width: min(760px, 100%);
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }}
+    .message.user {{
+      justify-self: end;
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }}
+    .message.agent {{
+      justify-self: start;
+    }}
+    .message.system {{
+      justify-self: start;
+      background: #fff8e6;
+      color: #594300;
+    }}
+    .composer {{
+      border-top: 1px solid var(--line);
+      background: var(--panel);
+      padding: 16px clamp(18px, 4vw, 42px);
+    }}
+    .quick-actions {{
+      max-width: 920px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }}
+    .quick-actions button {{
+      min-height: 34px;
+      padding: 7px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      color: var(--accent);
+      cursor: pointer;
+      font-weight: 800;
+    }}
+    form {{
+      max-width: 920px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: end;
+    }}
+    textarea {{
+      width: 100%;
+      min-height: 54px;
+      max-height: 180px;
+      resize: vertical;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      font: inherit;
+      line-height: 1.45;
+    }}
+    button[type="submit"] {{
+      min-height: 54px;
+      padding: 0 18px;
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      background: var(--accent);
+      color: white;
+      font-weight: 900;
+      cursor: pointer;
+    }}
+    button:disabled {{
+      opacity: 0.55;
+      cursor: not-allowed;
+    }}
+    .status {{
+      max-width: 920px;
+      min-height: 24px;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }}
+    .status.error {{ color: var(--bad); }}
+    .status.ready {{ color: var(--good); }}
+    @media (max-width: 760px) {{
+      .shell {{ grid-template-columns: 1fr; }}
+      aside {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; }}
+      aside h1 {{ margin: 0; }}
+      form {{ grid-template-columns: 1fr; }}
+      button[type="submit"] {{ width: 100%; }}
+    }}
   </style>
 </head>
 <body>
-  <header>
-    <h1>Add project/lesson</h1>
-    <nav aria-label="Agent chat navigation">
-      <a class="nav-link" href="index.html">Dashboard</a>
-      <a class="nav-link" href="{chat_url}" target="_blank" rel="noopener noreferrer">Open root agent chat</a>
-    </nav>
-  </header>
-  <iframe src="{chat_url}" title="Root agent chat"></iframe>
+  <div class="shell">
+    <aside>
+      <h1>Agentic Tutor</h1>
+      <nav aria-label="Chat navigation">
+        <a href="index.html">Dashboard</a>
+        <a class="active" href="agent_chat.html">Chat with tt</a>
+      </nav>
+    </aside>
+    <main>
+      <header class="topbar">
+        <h2>Chat with tt</h2>
+        <p>Create a new course, generate quizzes, refresh the dashboard, or revise saved lessons.</p>
+      </header>
+      <section class="chat-window" id="chatWindow" aria-label="Conversation">
+        <div class="messages" id="messages">
+          <div class="message agent">Hi, I am tt. Tell me what course or project you want to build, and I will interview you briefly before generating the curriculum.</div>
+        </div>
+      </section>
+      <section class="composer" aria-label="Message composer">
+        <div class="quick-actions">
+          <button type="button" data-prompt="I want to create a new project-based course.">New project course</button>
+          <button type="button" data-prompt="I want to create a theoretical lesson course.">New theoretical course</button>
+          <button type="button" data-prompt="Refresh the dashboard and hook all course pages.">Refresh dashboard</button>
+        </div>
+        <form id="chatForm">
+          <textarea id="messageInput" placeholder="Message tt..." autocomplete="off"></textarea>
+          <button id="sendButton" type="submit">Send</button>
+        </form>
+        <div id="status" class="status">Connecting to tt at {chat_url}</div>
+      </section>
+    </main>
+  </div>
+  <script>
+    const ADK_BASE_URL = "{chat_url}";
+    const APP_NAME = "tt";
+    const USER_ID = "dashboard-user";
+    const sessionKey = "tt-dashboard-chat-session";
+    const messages = document.getElementById("messages");
+    const chatWindow = document.getElementById("chatWindow");
+    const form = document.getElementById("chatForm");
+    const input = document.getElementById("messageInput");
+    const sendButton = document.getElementById("sendButton");
+    const statusEl = document.getElementById("status");
+
+    let sessionId = localStorage.getItem(sessionKey) || crypto.randomUUID();
+    localStorage.setItem(sessionKey, sessionId);
+
+    function setStatus(text, kind = "") {{
+      statusEl.textContent = text;
+      statusEl.className = "status " + kind;
+    }}
+
+    function addMessage(text, role) {{
+      const bubble = document.createElement("div");
+      bubble.className = "message " + role;
+      bubble.textContent = text;
+      messages.appendChild(bubble);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+      return bubble;
+    }}
+
+    async function ensureSession() {{
+      const url = `${{ADK_BASE_URL}}/apps/${{APP_NAME}}/users/${{USER_ID}}/sessions/${{sessionId}}`;
+      const response = await fetch(url, {{
+        method: "POST",
+        headers: {{ "Content-Type": "application/json" }},
+        body: JSON.stringify({{ state: {{ source: "course-dashboard" }} }})
+      }});
+      if (!response.ok && response.status !== 409) {{
+        throw new Error(`Could not create tt session (${{response.status}}).`);
+      }}
+      setStatus("Connected to tt", "ready");
+    }}
+
+    function extractText(event) {{
+      if (!event || !event.content || event.content.role === "user") return "";
+      const parts = event.content.parts || [];
+      return parts.map((part) => part.text || "").filter(Boolean).join("\\n");
+    }}
+
+    async function sendMessage(text) {{
+      addMessage(text, "user");
+      input.value = "";
+      sendButton.disabled = true;
+      setStatus("tt is working...");
+      const agentBubble = addMessage("", "agent");
+
+      try {{
+        await ensureSession();
+        const response = await fetch(`${{ADK_BASE_URL}}/run_sse`, {{
+          method: "POST",
+          headers: {{ "Content-Type": "application/json" }},
+          body: JSON.stringify({{
+            appName: APP_NAME,
+            userId: USER_ID,
+            sessionId,
+            streaming: false,
+            newMessage: {{
+              role: "user",
+              parts: [{{ text }}]
+            }}
+          }})
+        }});
+        if (!response.ok || !response.body) {{
+          throw new Error(`ADK request failed (${{response.status}}).`);
+        }}
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let collected = "";
+
+        while (true) {{
+          const {{ value, done }} = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, {{ stream: true }});
+          const chunks = buffer.split("\\n\\n");
+          buffer = chunks.pop() || "";
+          for (const chunk of chunks) {{
+            const line = chunk.split("\\n").find((item) => item.startsWith("data: "));
+            if (!line) continue;
+            const payload = line.slice(6);
+            const event = JSON.parse(payload);
+            if (event.error) throw new Error(event.error);
+            const textPart = extractText(event);
+            if (textPart) {{
+              collected += (collected ? "\\n" : "") + textPart;
+              agentBubble.textContent = collected;
+              chatWindow.scrollTop = chatWindow.scrollHeight;
+            }}
+          }}
+        }}
+
+        if (!agentBubble.textContent.trim()) {{
+          agentBubble.textContent = "Done. Check the dashboard for generated course files or linked pages.";
+        }}
+        setStatus("Connected to tt", "ready");
+      }} catch (error) {{
+        agentBubble.textContent = "I could not reach tt from this page. Make sure ADK is running at " + ADK_BASE_URL + " and that browser access is allowed.";
+        setStatus(error.message, "error");
+      }} finally {{
+        sendButton.disabled = false;
+        input.focus();
+      }}
+    }}
+
+    form.addEventListener("submit", (event) => {{
+      event.preventDefault();
+      const text = input.value.trim();
+      if (text) sendMessage(text);
+    }});
+
+    input.addEventListener("keydown", (event) => {{
+      if (event.key === "Enter" && !event.shiftKey) {{
+        event.preventDefault();
+        form.requestSubmit();
+      }}
+    }});
+
+    document.querySelectorAll("[data-prompt]").forEach((button) => {{
+      button.addEventListener("click", () => {{
+        input.value = button.dataset.prompt;
+        input.focus();
+      }});
+    }});
+
+    ensureSession().catch((error) => {{
+      setStatus(error.message, "error");
+      addMessage("Start ADK with `adk web` and keep it running before chatting with tt.", "system");
+    }});
+  </script>
 </body>
 </html>
 """.format(chat_url=escape(chat_url, quote=True))

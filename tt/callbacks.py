@@ -639,7 +639,6 @@ def _render_markdown_to_html(markdown_text: str) -> str:
 
 def _build_course_page_html(bundle: CoursePageBundle) -> str:
     nav_items: list[str] = []
-    module_items: list[str] = []
     sections: list[str] = []
 
     for unit_index, unit in enumerate(bundle.units):
@@ -654,20 +653,6 @@ def _build_course_page_html(bundle: CoursePageBundle) -> str:
             "</button>".format(
                 number=unit_index + 1,
                 title=html.escape(unit.unit_title),
-            )
-        )
-        module_items.append(
-            "<li>"
-            "<button type=\"button\" class=\"module-button\" data-target=\"{unit_id}\">"
-            "<span>{number:02d}</span>"
-            "<strong>{title}</strong>"
-            "<small>{source}</small>"
-            "</button>"
-            "</li>".format(
-                unit_id=unit_id,
-                number=unit_index + 1,
-                title=html.escape(unit.unit_title),
-                source=html.escape(unit.source_file),
             )
         )
         sections.append(
@@ -848,59 +833,7 @@ def _build_course_page_html(bundle: CoursePageBundle) -> str:
       letter-spacing: 0;
     }}
     .content-grid {{
-      display: grid;
-      grid-template-columns: minmax(220px, 310px) minmax(0, 1fr);
-      gap: 22px;
       padding: 22px clamp(18px, 4vw, 38px) 42px;
-      align-items: start;
-    }}
-    .modules {{
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      overflow: hidden;
-    }}
-    .modules h2 {{
-      margin: 0;
-      padding: 16px 18px;
-      border-bottom: 1px solid var(--line);
-      font-size: 1rem;
-      letter-spacing: 0;
-    }}
-    .module-list {{
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }}
-    .module-button {{
-      width: 100%;
-      min-height: 68px;
-      display: grid;
-      grid-template-columns: 34px minmax(0, 1fr);
-      gap: 8px;
-      padding: 12px 16px;
-      border: 0;
-      border-bottom: 1px solid var(--line);
-      background: white;
-      color: var(--ink);
-      text-align: left;
-      cursor: pointer;
-    }}
-    .module-button:hover {{
-      background: var(--accent-soft);
-    }}
-    .module-button strong, .module-button small {{
-      display: block;
-      overflow-wrap: anywhere;
-    }}
-    .module-button span {{
-      color: var(--success);
-      font-weight: 800;
-      font-variant-numeric: tabular-nums;
-    }}
-    .module-button small {{
-      margin-top: 3px;
-      color: var(--muted);
     }}
     .lesson-panel {{
       background: var(--panel);
@@ -977,7 +910,6 @@ def _build_course_page_html(bundle: CoursePageBundle) -> str:
       .topbar-row {{
         display: grid;
       }}
-      .content-grid {{ grid-template-columns: 1fr; }}
     }}
   </style>
 </head>
@@ -1003,10 +935,6 @@ def _build_course_page_html(bundle: CoursePageBundle) -> str:
         </div>
       </header>
       <div class="content-grid">
-        <section class="modules" aria-label="Modules">
-          <h2>Modules</h2>
-          <ol class="module-list">{modules}</ol>
-        </section>
         <section aria-label="Lesson content">{sections}</section>
       </div>
     </main>
@@ -1034,7 +962,6 @@ def _build_course_page_html(bundle: CoursePageBundle) -> str:
         title=html.escape(bundle.course_title),
         summary=html.escape(bundle.course_summary),
         nav="".join(nav_items),
-        modules="".join(module_items),
         sections="".join(sections),
     )
 

@@ -72,7 +72,7 @@ Return this exact JSON shape:
 }}
 
 Planning rules:
-- Create a logical sequence of units, no minimumnumbers of units, no maximum numbers of units, but relative to user's prerequisite knowledge, but prefer up to 10 units, make more than 10 units only necessary (like the concept is very broad and much).
+- Create a logical sequence of course units. Take into account the complexity of the topic and the logical number of units needed to teach the subject. Keep to one topic per unit, trying to minimize the total number of units however it makes sense to.
 - If the learner profile is "PRACTICAL_PROJECT", bias toward HANDS_ON_TUTORIAL and PROJECT_MILESTONE.
 - If the learner profile is "THEORETICAL", bias toward CONCEPT_LECTURE.
 - Keep titles specific and concrete.
