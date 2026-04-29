@@ -22,6 +22,7 @@ from .schemas import CoursePageBundle, CurriculumBundle, QuizBundle
 from .tool_logging import elapsed_ms, log_tool_call, summarize_text
 from .tool_logging import log_model_usage
 from .tools import (
+    _build_static_course_page_html,
     _resolve_curriculum_session,
     create_curriculum_session_dir,
     refresh_canvas_dashboard,
@@ -248,6 +249,7 @@ def _annotate_unverified_bundle_urls(
 def _build_quiz_html(bundle: QuizBundle) -> str:
     nav_items: list[str] = []
     sections: list[str] = []
+    total_questions = 0
     for unit_index, unit in enumerate(bundle.units):
         unit_id = f"unit-{unit_index}"
         active_class = " active" if unit_index == 0 else ""
@@ -255,11 +257,16 @@ def _build_quiz_html(bundle: QuizBundle) -> str:
         nav_items.append(
             "<button type=\"button\" "
             f"class=\"unit-tab{active_class}\" data-target=\"{unit_id}\">"
-            f"{html.escape(unit.unit_title)}</button>"
+            "<span>{number:02d}</span><strong>{title}</strong>"
+            "</button>".format(
+                number=unit_index + 1,
+                title=html.escape(unit.unit_title),
+            )
         )
 
         question_blocks: list[str] = []
         for question_index, question in enumerate(unit.questions):
+            total_questions += 1
             options = []
             for option_index, option in enumerate(question.options):
                 input_id = f"{unit_id}-q{question_index}-o{option_index}"
@@ -321,150 +328,103 @@ def _build_quiz_html(bundle: QuizBundle) -> str:
   <style>
     :root {{
       color-scheme: light;
-      --bg: #f7f8fa;
+      --bg: #f4f1ea;
       --panel: #ffffff;
-      --ink: #1d2430;
-      --muted: #667085;
-      --line: #d9dee7;
-      --accent: #2457c5;
-      --accent-soft: #e8eefc;
-      --good: #137a45;
+      --ink: #181a1f;
+      --muted: #6f756f;
+      --line: #ddd8cc;
+      --accent: #f05a43;
+      --accent-dark: #d9432f;
+      --accent-soft: #fff0eb;
+      --surface: #f9f7f0;
+      --good: #2d7a55;
       --bad: #b42318;
+      --shadow: 0 18px 38px rgba(26, 22, 18, 0.11);
     }}
     * {{ box-sizing: border-box; }}
-    body {{
-      margin: 0;
-      background: var(--bg);
-      color: var(--ink);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.5;
-    }}
-    header {{
-      padding: 28px clamp(18px, 4vw, 44px) 18px;
-      border-bottom: 1px solid var(--line);
-      background: var(--panel);
-    }}
-    header p {{ color: var(--muted); margin: 6px 0 0; }}
-    .top-actions {{
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 14px;
-    }}
-    .top-actions a {{
-      padding: 8px 12px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      color: var(--accent);
-      text-decoration: none;
-      font-weight: 800;
-      background: white;
-    }}
-    .top-actions a:hover {{ background: var(--accent-soft); }}
-    h1 {{ margin: 0; font-size: clamp(1.6rem, 3vw, 2.35rem); letter-spacing: 0; }}
-    main {{
-      display: grid;
-      grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
-      gap: 22px;
-      padding: 22px clamp(18px, 4vw, 44px) 44px;
-    }}
-    nav {{
-      align-self: start;
-      position: sticky;
-      top: 18px;
-      display: grid;
-      gap: 8px;
-    }}
-    .unit-tab {{
-      width: 100%;
-      min-height: 42px;
-      padding: 10px 12px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--panel);
-      color: var(--ink);
-      text-align: left;
-      cursor: pointer;
-    }}
-    .unit-tab.active {{
-      border-color: var(--accent);
-      background: var(--accent-soft);
-      color: var(--accent);
-      font-weight: 700;
-    }}
-    .unit-panel {{
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: clamp(16px, 3vw, 28px);
-    }}
-    .unit-heading p {{
-      margin: 0 0 4px;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }}
-    h2 {{ margin: 0 0 20px; font-size: 1.45rem; letter-spacing: 0; }}
-    .question {{
-      padding: 18px 0;
-      border-top: 1px solid var(--line);
-    }}
-    .question h3 {{ margin: 0 0 12px; font-size: 1rem; letter-spacing: 0; }}
+    body {{ margin: 0; background: var(--bg); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.65; text-rendering: optimizeLegibility; }}
+    .top-nav {{ display: flex; align-items: center; justify-content: center; gap: 18px; padding: 18px clamp(20px, 4vw, 54px); background: rgba(255,255,255,0.76); border-bottom: 1px solid var(--line); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 10; }}
+    .brand-mark {{ position: absolute; left: clamp(20px, 4vw, 54px); font-weight: 950; font-size: 1.15rem; }}
+    .nav-pills {{ display: flex; flex-wrap: wrap; gap: 8px; padding: 6px; border-radius: 999px; background: #ebe7dc; }}
+    .nav-pills a {{ min-height: 38px; padding: 9px 16px; border-radius: 999px; color: var(--ink); text-decoration: none; font-weight: 850; font-size: 0.92rem; }}
+    .nav-pills a.active, .nav-pills a:hover {{ background: #181a1f; color: white; }}
+    .quiz-shell {{ display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 24px; padding: 26px clamp(20px, 4vw, 54px) 54px; }}
+    .quiz-nav, .unit-panel, .quiz-hero {{ background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }}
+    .quiz-nav {{ align-self: start; position: sticky; top: 112px; padding: 20px; }}
+    .quiz-nav h2 {{ margin: 0 0 14px; font-size: 1.12rem; }}
+    .unit-tabs {{ display: grid; gap: 8px; }}
+    .unit-tab {{ width: 100%; min-height: 52px; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: center; padding: 10px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); text-align: left; cursor: pointer; font: inherit; }}
+    .unit-tab span {{ width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-weight: 950; }}
+    .unit-tab strong {{ overflow-wrap: anywhere; }}
+    .unit-tab:hover {{ background: white; border-color: var(--accent); }}
+    .unit-tab.active {{ background: var(--accent); color: white; border-color: var(--accent); }}
+    .unit-tab.active span {{ background: rgba(255,255,255,0.22); color: white; }}
+    .quiz-hero {{ margin-bottom: 22px; padding: 26px; background: var(--accent); color: white; }}
+    .quiz-hero h1 {{ margin: 0; font-size: clamp(1.8rem, 3vw, 2.65rem); line-height: 1.08; }}
+    .quiz-hero p {{ margin: 9px 0 0; color: rgba(255,255,255,0.86); }}
+    .quiz-hero .meta {{ display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }}
+    .quiz-hero .meta span {{ padding: 8px 10px; border-radius: 999px; background: rgba(255,255,255,0.18); font-weight: 850; }}
+    .unit-panel {{ padding: clamp(22px, 3vw, 34px); }}
+    .unit-heading p {{ margin: 0 0 7px; color: var(--muted); font-size: 0.86rem; font-weight: 800; overflow-wrap: anywhere; }}
+    h2 {{ margin: 0 0 20px; font-size: clamp(1.35rem, 2.2vw, 1.95rem); line-height: 1.2; }}
+    .question {{ padding: 18px 0; border-top: 1px solid var(--line); }}
+    .question h3 {{ margin: 0 0 12px; font-size: 1rem; }}
     .options {{ display: grid; gap: 8px; }}
-    .option {{
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      padding: 10px 12px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fbfcfe;
-      cursor: pointer;
-    }}
+    .option {{ display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); cursor: pointer; }}
+    .option:hover {{ border-color: var(--accent); background: var(--accent-soft); }}
     .option input {{ margin-top: 4px; }}
     .feedback {{ min-height: 24px; margin: 10px 0 0; color: var(--muted); }}
     .question.correct .feedback {{ color: var(--good); }}
     .question.incorrect .feedback {{ color: var(--bad); }}
-    .actions {{
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-      padding-top: 18px;
-      border-top: 1px solid var(--line);
-    }}
-    .check-button, .reset-button {{
-      min-height: 40px;
-      padding: 8px 14px;
-      border-radius: 8px;
-      border: 1px solid var(--accent);
-      cursor: pointer;
-      font-weight: 700;
-    }}
+    .actions {{ display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding-top: 18px; border-top: 1px solid var(--line); }}
+    .check-button, .reset-button {{ min-height: 40px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--accent); cursor: pointer; font-weight: 850; }}
     .check-button {{ background: var(--accent); color: white; }}
     .reset-button {{ background: white; color: var(--accent); }}
-    .score {{ color: var(--muted); font-weight: 700; }}
-    @media (max-width: 760px) {{
-      main {{ grid-template-columns: 1fr; }}
-      nav {{ position: static; }}
-    }}
+    .score {{ color: var(--muted); font-weight: 850; }}
+    @media (max-width: 980px) {{ .quiz-shell {{ grid-template-columns: 1fr; }} .quiz-nav {{ position: static; }} .unit-tabs {{ grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }} }}
+    @media (max-width: 720px) {{ .top-nav {{ align-items: flex-start; flex-direction: column; justify-content: flex-start; }} .brand-mark {{ position: static; }} .nav-pills {{ border-radius: 8px; }} .quiz-shell {{ padding-inline: 16px; }} }}
   </style>
 </head>
 <body>
-  <header>
-    <h1>{title}</h1>
-    <p>Choose a unit, answer the questions, and check your score.</p>
-    <div class="top-actions">
-      <a href="course_page.html">Course page</a>
+  <header class="top-nav">
+    <div class="brand-mark">Agentic Tutor</div>
+    <nav class="nav-pills" aria-label="Main navigation">
       <a href="../index.html">Dashboard</a>
-    </div>
+      <a class="active" href="quiz.html">Quiz</a>
+      <a href="../agent_chat.html">AI assistant</a>
+    </nav>
   </header>
-  <main>
-    <nav aria-label="Quiz units">{nav}</nav>
-    <div>{sections}</div>
+  <main class="quiz-shell">
+    <aside class="quiz-nav"><h2>Quiz units</h2><nav class="unit-tabs" aria-label="Quiz units">{nav}</nav></aside>
+    <section>
+      <header class="quiz-hero"><h1>{title}</h1><p>Choose a unit, answer the questions, and check your score.</p><div class="meta"><span>{unit_count} unit(s)</span><span>{question_count} question(s)</span></div></header>
+      <div>{sections}</div>
+    </section>
   </main>
   <script>
     const tabs = document.querySelectorAll(".unit-tab");
     const panels = document.querySelectorAll(".unit-panel");
+    const courseKey = decodeURIComponent(location.pathname.split("/").filter(Boolean).slice(-2, -1)[0] || "current-course");
+    const progressKey = "tt.quizProgress." + courseKey;
+
+    function readProgress() {{
+      try {{
+        return JSON.parse(localStorage.getItem(progressKey)) || {{}};
+      }} catch (error) {{
+        return {{}};
+      }}
+    }}
+
+    function setUnitComplete(unitId, complete) {{
+      const progress = readProgress();
+      if (complete) {{
+        progress[unitId] = true;
+      }} else {{
+        delete progress[unitId];
+      }}
+      localStorage.setItem(progressKey, JSON.stringify(progress));
+    }}
+
     tabs.forEach((tab) => {{
       tab.addEventListener("click", () => {{
         tabs.forEach((item) => item.classList.remove("active"));
@@ -499,7 +459,11 @@ def _build_quiz_html(bundle: QuizBundle) -> str:
             question.classList.add("incorrect");
           }}
         }});
-        score.textContent = `${{correct}} / ${{questions.length}} correct`;
+        const perfect = correct === questions.length && questions.length > 0;
+        if (perfect) {{
+          setUnitComplete(panel.id, true);
+        }}
+        score.textContent = `${{correct}} / ${{questions.length}} correct` + (perfect ? " - unit complete" : "");
       }});
       resetButton.addEventListener("click", () => {{
         panel.querySelectorAll("input").forEach((input) => input.checked = false);
@@ -517,6 +481,8 @@ def _build_quiz_html(bundle: QuizBundle) -> str:
         title=html.escape(bundle.quiz_title),
         nav="".join(nav_items),
         sections="".join(sections),
+        unit_count=len(bundle.units),
+        question_count=total_questions,
     )
 
 
@@ -638,333 +604,21 @@ def _render_markdown_to_html(markdown_text: str) -> str:
 
 
 def _build_course_page_html(bundle: CoursePageBundle) -> str:
-    nav_items: list[str] = []
-    sections: list[str] = []
-
-    for unit_index, unit in enumerate(bundle.units):
-        unit_id = f"unit-{unit_index}"
-        active_class = " active" if unit_index == 0 else ""
-        hidden_attr = "" if unit_index == 0 else " hidden"
-        nav_items.append(
-            "<button type=\"button\" "
-            f"class=\"unit-link{active_class}\" data-target=\"{unit_id}\">"
-            "<span class=\"unit-number\">{number:02d}</span>"
-            "<span>{title}</span>"
-            "</button>".format(
-                number=unit_index + 1,
-                title=html.escape(unit.unit_title),
-            )
-        )
-        sections.append(
-            "<article id=\"{unit_id}\" class=\"lesson-panel\"{hidden}>"
-            "<header class=\"lesson-header\">"
-            "<p>{source}</p>"
-            "<h2>{title}</h2>"
-            "</header>"
-            "<div class=\"lesson-body\">{body}</div>"
-            "</article>".format(
-                unit_id=unit_id,
-                hidden=hidden_attr,
-                source=html.escape(unit.source_file),
-                title=html.escape(unit.unit_title),
-                body=_render_markdown_to_html(unit.markdown_content),
-            )
-        )
-
-    return """<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{title}</title>
-  <style>
-    :root {{
-      color-scheme: light;
-      --page: #f5f7fb;
-      --panel: #ffffff;
-      --ink: #1f2937;
-      --muted: #64748b;
-      --line: #d7dee9;
-      --nav: #243447;
-      --nav-muted: #cbd5e1;
-      --accent: #2563eb;
-      --accent-soft: #e8f0ff;
-      --success: #0f766e;
-    }}
-    * {{ box-sizing: border-box; }}
-    body {{
-      margin: 0;
-      background: var(--page);
-      color: var(--ink);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.55;
-    }}
-    .app-shell {{
-      min-height: 100vh;
-      display: grid;
-      grid-template-columns: 260px minmax(0, 1fr);
-    }}
-    .sidebar {{
-      background: var(--nav);
-      color: white;
-      padding: 22px 16px;
-      position: sticky;
-      top: 0;
-      height: 100vh;
-      overflow: auto;
-    }}
-    .brand {{
-      margin: 0 0 18px;
-      font-size: 0.9rem;
-      color: var(--nav-muted);
-      text-transform: uppercase;
-      letter-spacing: 0;
-      font-weight: 700;
-    }}
-    .dashboard-link {{
-      display: block;
-      margin-bottom: 16px;
-      padding: 10px 12px;
-      border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 8px;
-      color: white;
-      text-decoration: none;
-      font-weight: 800;
-    }}
-    .dashboard-link:hover {{
-      background: rgba(255,255,255,0.12);
-    }}
-    .quiz-link {{
-      display: block;
-      margin-bottom: 16px;
-      padding: 10px 12px;
-      border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 8px;
-      color: white;
-      text-decoration: none;
-      font-weight: 800;
-    }}
-    .quiz-link:hover {{
-      background: rgba(255,255,255,0.12);
-    }}
-    .unit-nav {{
-      display: grid;
-      gap: 8px;
-    }}
-    .unit-link {{
-      width: 100%;
-      min-height: 44px;
-      display: grid;
-      grid-template-columns: 38px minmax(0, 1fr);
-      gap: 8px;
-      align-items: center;
-      padding: 9px 10px;
-      border: 1px solid rgba(255,255,255,0.14);
-      border-radius: 8px;
-      background: transparent;
-      color: white;
-      text-align: left;
-      cursor: pointer;
-    }}
-    .unit-link span:last-child {{
-      overflow-wrap: anywhere;
-    }}
-    .unit-link.active {{
-      background: white;
-      color: var(--nav);
-      border-color: white;
-      font-weight: 700;
-    }}
-    .unit-number {{
-      color: inherit;
-      opacity: 0.75;
-      font-variant-numeric: tabular-nums;
-    }}
-    .main {{
-      min-width: 0;
-      display: grid;
-      grid-template-rows: auto 1fr;
-    }}
-    .topbar {{
-      background: var(--panel);
-      border-bottom: 1px solid var(--line);
-      padding: 18px clamp(18px, 4vw, 38px);
-    }}
-    .topbar-row {{
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 16px;
-    }}
-    .topbar-dashboard-link {{
-      flex: 0 0 auto;
-      padding: 8px 12px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      color: var(--accent);
-      text-decoration: none;
-      font-weight: 800;
-      background: white;
-    }}
-    .topbar-dashboard-link:hover {{
-      background: var(--accent-soft);
-    }}
-    .topbar-quiz-link {{
-      flex: 0 0 auto;
-      padding: 8px 12px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      color: var(--accent);
-      text-decoration: none;
-      font-weight: 800;
-      background: white;
-    }}
-    .topbar-quiz-link:hover {{
-      background: var(--accent-soft);
-    }}
-    .topbar p {{
-      margin: 6px 0 0;
-      color: var(--muted);
-      max-width: 860px;
-    }}
-    h1 {{
-      margin: 0;
-      font-size: clamp(1.45rem, 3vw, 2.2rem);
-      letter-spacing: 0;
-    }}
-    .content-grid {{
-      padding: 22px clamp(18px, 4vw, 38px) 42px;
-    }}
-    .lesson-panel {{
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      overflow: hidden;
-    }}
-    .lesson-header {{
-      padding: clamp(18px, 3vw, 30px);
-      border-bottom: 1px solid var(--line);
-      background: #fbfcff;
-    }}
-    .lesson-header p {{
-      margin: 0 0 5px;
-      color: var(--muted);
-      font-size: 0.92rem;
-    }}
-    .lesson-header h2 {{
-      margin: 0;
-      font-size: clamp(1.25rem, 2.2vw, 1.75rem);
-      letter-spacing: 0;
-    }}
-    .lesson-body {{
-      padding: clamp(18px, 3vw, 30px);
-      max-width: 880px;
-    }}
-    .lesson-body h2, .lesson-body h3, .lesson-body h4, .lesson-body h5 {{
-      margin: 1.3em 0 0.45em;
-      letter-spacing: 0;
-      line-height: 1.25;
-    }}
-    .lesson-body h2:first-child, .lesson-body h3:first-child {{
-      margin-top: 0;
-    }}
-    .lesson-body p, .lesson-body li {{
-      font-size: 1rem;
-    }}
-    .lesson-body a {{
-      color: var(--accent);
-      font-weight: 700;
-    }}
-    .lesson-body blockquote {{
-      margin: 16px 0;
-      padding: 12px 14px;
-      border-left: 4px solid var(--accent);
-      background: var(--accent-soft);
-      color: #243447;
-    }}
-    .lesson-body pre {{
-      overflow: auto;
-      padding: 14px;
-      border-radius: 8px;
-      background: #111827;
-      color: #e5e7eb;
-    }}
-    .lesson-body code {{
-      padding: 0.08rem 0.25rem;
-      border-radius: 4px;
-      background: #eef2f7;
-    }}
-    .lesson-body pre code {{
-      padding: 0;
-      background: transparent;
-    }}
-    @media (max-width: 980px) {{
-      .app-shell {{ grid-template-columns: 1fr; }}
-      .sidebar {{
-        position: static;
-        height: auto;
-      }}
-      .unit-nav {{
-        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-      }}
-      .topbar-row {{
-        display: grid;
-      }}
-    }}
-  </style>
-</head>
-<body>
-  <div class="app-shell">
-    <aside class="sidebar">
-      <p class="brand">Course Navigation</p>
-      <a class="dashboard-link" href="../index.html">Dashboard</a>
-      <a class="quiz-link" href="quiz.html">Quiz</a>
-      <nav class="unit-nav" aria-label="Course units">{nav}</nav>
-    </aside>
-    <main class="main">
-      <header class="topbar">
-        <div class="topbar-row">
-          <div>
-            <h1>{title}</h1>
-            <p>{summary}</p>
-          </div>
-          <div>
-            <a class="topbar-dashboard-link" href="../index.html">Dashboard</a>
-            <a class="topbar-quiz-link" href="quiz.html">Quiz</a>
-          </div>
-        </div>
-      </header>
-      <div class="content-grid">
-        <section aria-label="Lesson content">{sections}</section>
-      </div>
-    </main>
-  </div>
-  <script>
-    const buttons = document.querySelectorAll("[data-target]");
-    const navButtons = document.querySelectorAll(".unit-link");
-    const lessons = document.querySelectorAll(".lesson-panel");
-
-    function showLesson(targetId) {{
-      lessons.forEach((lesson) => lesson.hidden = lesson.id !== targetId);
-      navButtons.forEach((button) => {{
-        button.classList.toggle("active", button.dataset.target === targetId);
-      }});
-      document.getElementById(targetId)?.scrollIntoView({{ behavior: "smooth", block: "start" }});
-    }}
-
-    buttons.forEach((button) => {{
-      button.addEventListener("click", () => showLesson(button.dataset.target));
-    }});
-  </script>
-</body>
-</html>
-""".format(
-        title=html.escape(bundle.course_title),
-        summary=html.escape(bundle.course_summary),
-        nav="".join(nav_items),
-        sections="".join(sections),
+    units = [
+        {
+            "filename": unit.source_file,
+            "title": unit.unit_title,
+            "content": unit.markdown_content,
+        }
+        for unit in bundle.units
+    ]
+    source_dir = Path(bundle.source_session_dir)
+    return _build_static_course_page_html(
+        bundle.course_title,
+        bundle.course_summary,
+        units,
+        quiz_available=(source_dir / "quiz.html").exists(),
     )
-
 
 def _normalize_source_url(url: str) -> str:
     parsed = urlparse(url)
