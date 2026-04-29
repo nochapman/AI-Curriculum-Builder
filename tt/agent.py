@@ -20,6 +20,7 @@ from .prompts import (
     COURSE_PAGE_REPORT_INSTRUCTION,
     CURRICULUM_DIRECTOR_INSTRUCTION,
     CURRICULUM_WRITER_INSTRUCTION,
+    CURRICULUM_REVIEWER_INSTRUCTION,
     DASHBOARD_MANAGER_INSTRUCTION,
     INTERVIEWER_INSTRUCTION,
     QUIZ_GENERATOR_INSTRUCTION,
@@ -76,8 +77,20 @@ content_generator_agent = LlmAgent(
 curriculum_writer_agent = LlmAgent(
     name="curriculum_writer_agent",
     model=MODEL,
-    description="Writes a structured curriculum bundle for Python to save to disk.",
+    description="Writes an initial draft of the curriculum bundle.",
     instruction=CURRICULUM_WRITER_INSTRUCTION,
+    output_schema=CurriculumBundle,
+    output_key="draft_curriculum_bundle",
+    after_model_callback=log_model_usage_callback,
+    generate_content_config=RETRY_GENERATE_CONTENT_CONFIG,
+)
+
+
+curriculum_reviewer_agent = LlmAgent(
+    name="curriculum_reviewer_agent",
+    model=MODEL,
+    description="Critiques and revises the drafted curriculum bundle before saving to disk.",
+    instruction=CURRICULUM_REVIEWER_INSTRUCTION,
     output_schema=CurriculumBundle,
     output_key="curriculum_bundle",
     after_model_callback=log_model_usage_callback,
@@ -250,6 +263,7 @@ curriculum_generation_agent = SequentialAgent(
         curriculum_director_agent,
         content_generator_agent,
         curriculum_writer_agent,
+        curriculum_reviewer_agent,
         pipeline_course_page_agent,
         pipeline_quiz_agent,
     ],

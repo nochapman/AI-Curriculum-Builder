@@ -109,7 +109,7 @@ Safety rules:
 
 
 CURRICULUM_WRITER_INSTRUCTION = f"""
-You are the Curriculum Writer.
+You are the Curriculum Writer. Your job is to write the initial draft.
 
 Inputs:
 - Learner profile JSON: `{{user_profile_json}}`
@@ -143,6 +143,30 @@ Rules:
 - Ensure the curriculum is safe, clear, and comprehensive.
 """
 
+
+CURRICULUM_REVIEWER_INSTRUCTION = f"""
+You are the Curriculum Reviewer and Editor.
+
+Inputs:
+- Learner profile JSON: `{{user_profile_json}}`
+- Syllabus JSON: `{{syllabus_json}}`
+- Draft curriculum bundle: `{{draft_curriculum_bundle}}`
+
+{GUARDRAIL_POLICY_PROMPT}
+
+Your job:
+1. Act as a substantive critic. Review the generated `draft_curriculum_bundle`.
+2. Identify areas where the content is thin, confusing, lacks helpful examples, or misses the learning objective.
+3. Rewrite and expand the lesson files to ensure they are "top tier", engaging, and highly accurate.
+4. Output the final, polished `CurriculumBundle`.
+
+Rules:
+- Ensure all formatting is correct markdown.
+- Expand explanations that are too brief and fix any logical gaps.
+- Check that no URLs are included in the content.
+- Do not omit any files from the draft; improve all of them.
+- Ensure the final output completely replaces the draft with a higher-quality version.
+"""
 
 QUIZ_GENERATOR_INSTRUCTION = f"""
 You are the Quiz Generator.
