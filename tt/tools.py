@@ -581,51 +581,55 @@ def _build_static_course_page_html(
   <style>
     :root {{
       color-scheme: light;
-      --page: #f5f7fb;
+      --page: #f6f8fb;
       --panel: #ffffff;
-      --ink: #1f2937;
+      --ink: #182230;
       --muted: #64748b;
-      --line: #d7dee9;
-      --nav: #243447;
-      --nav-muted: #cbd5e1;
-      --accent: #2563eb;
-      --accent-soft: #e8f0ff;
+      --line: #d9e1ec;
+      --nav: #152238;
+      --nav-muted: #b9c6d8;
+      --accent: #2f6fed;
+      --accent-soft: #eef4ff;
       --success: #0f766e;
+      --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
     }}
     * {{ box-sizing: border-box; }}
-    body {{ margin: 0; background: var(--page); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.55; }}
-    .app-shell {{ min-height: 100vh; display: grid; grid-template-columns: 260px minmax(0, 1fr); }}
-    .sidebar {{ background: var(--nav); color: white; padding: 22px 16px; position: sticky; top: 0; height: 100vh; overflow: auto; }}
-    .brand {{ margin: 0 0 18px; font-size: 0.9rem; color: var(--nav-muted); text-transform: uppercase; letter-spacing: 0; font-weight: 700; }}
-    .dashboard-link {{ display: block; margin-bottom: 16px; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.18); border-radius: 8px; color: white; text-decoration: none; font-weight: 800; }}
-    .dashboard-link:hover {{ background: rgba(255,255,255,0.12); }}
-    .quiz-link {{ display: block; margin-bottom: 16px; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.18); border-radius: 8px; color: white; text-decoration: none; font-weight: 800; }}
-    .quiz-link:hover {{ background: rgba(255,255,255,0.12); }}
-    .unit-nav {{ display: grid; gap: 8px; }}
-    .unit-link {{ width: 100%; min-height: 44px; display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 8px; align-items: center; padding: 9px 10px; border: 1px solid rgba(255,255,255,0.14); border-radius: 8px; background: transparent; color: white; text-align: left; cursor: pointer; }}
+    body {{ margin: 0; background: linear-gradient(180deg, #ffffff 0, var(--page) 280px), var(--page); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.65; text-rendering: optimizeLegibility; }}
+    .app-shell {{ min-height: 100vh; display: grid; grid-template-columns: 256px minmax(0, 1fr); }}
+    .sidebar {{ background: var(--nav); color: white; padding: 24px 18px; position: sticky; top: 0; height: 100vh; overflow: auto; border-right: 1px solid rgba(255,255,255,0.08); }}
+    .brand {{ margin: 0 0 20px; font-size: 0.76rem; color: var(--nav-muted); text-transform: uppercase; letter-spacing: 0; font-weight: 800; }}
+    .dashboard-link, .quiz-link {{ display: block; margin-bottom: 10px; padding: 11px 12px; border: 1px solid rgba(255,255,255,0.18); border-radius: 8px; color: white; text-decoration: none; font-weight: 800; font-size: 0.92rem; background: rgba(255,255,255,0.04); }}
+    .dashboard-link:hover, .quiz-link:hover {{ background: rgba(255,255,255,0.12); }}
+    .quiz-link {{ margin-bottom: 18px; }}
+    .unit-nav {{ display: grid; gap: 7px; }}
+    .unit-link {{ width: 100%; min-height: 46px; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: center; padding: 10px 11px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #e5edf8; text-align: left; cursor: pointer; font: inherit; font-size: 0.92rem; }}
     .unit-link span:last-child {{ overflow-wrap: anywhere; }}
+    .unit-link:hover {{ background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.12); }}
     .unit-link.active {{ background: white; color: var(--nav); border-color: white; font-weight: 700; }}
     .unit-number {{ font-variant-numeric: tabular-nums; }}
     .main {{ min-width: 0; display: grid; grid-template-rows: auto 1fr; }}
-    .topbar {{ background: var(--panel); border-bottom: 1px solid var(--line); padding: 18px clamp(18px, 4vw, 38px); }}
-    .topbar-row {{ display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }}
-    .topbar-dashboard-link {{ flex: 0 0 auto; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--accent); text-decoration: none; font-weight: 800; background: white; }}
-    .topbar-dashboard-link:hover {{ background: var(--accent-soft); }}
-    .topbar-quiz-link {{ flex: 0 0 auto; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--accent); text-decoration: none; font-weight: 800; background: white; }}
-    .topbar-quiz-link:hover {{ background: var(--accent-soft); }}
-    .topbar p {{ margin: 6px 0 0; color: var(--muted); max-width: 860px; }}
-    h1 {{ margin: 0; font-size: clamp(1.45rem, 3vw, 2.2rem); letter-spacing: 0; }}
-    .content-grid {{ padding: 22px clamp(18px, 4vw, 38px) 42px; }}
-    .lesson-panel {{ background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }}
-    .lesson-header {{ padding: clamp(18px, 3vw, 30px); border-bottom: 1px solid var(--line); background: #fbfcff; }}
-    .lesson-header p {{ margin: 0 0 5px; color: var(--muted); font-size: 0.92rem; }}
-    .lesson-header h2 {{ margin: 0; font-size: clamp(1.25rem, 2.2vw, 1.75rem); letter-spacing: 0; }}
-    .lesson-body {{ padding: clamp(18px, 3vw, 30px); max-width: 880px; }}
+    .topbar {{ background: rgba(255,255,255,0.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: 24px clamp(20px, 4vw, 48px); }}
+    .topbar-row {{ display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }}
+    .topbar-row > div:last-child {{ display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }}
+    .topbar-dashboard-link, .topbar-quiz-link {{ flex: 0 0 auto; padding: 9px 13px; border: 1px solid var(--line); border-radius: 8px; color: var(--accent); text-decoration: none; font-weight: 800; background: white; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }}
+    .topbar-dashboard-link:hover, .topbar-quiz-link:hover {{ background: var(--accent-soft); }}
+    .topbar p {{ margin: 8px 0 0; color: var(--muted); max-width: 860px; }}
+    h1 {{ margin: 0; font-size: clamp(1.65rem, 3vw, 2.45rem); letter-spacing: 0; line-height: 1.15; }}
+    .content-grid {{ padding: 28px clamp(20px, 4vw, 48px) 54px; }}
+    .lesson-panel {{ background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); }}
+    .lesson-header {{ padding: clamp(22px, 3vw, 36px); border-bottom: 1px solid var(--line); background: linear-gradient(180deg, #fbfdff 0, #f7faff 100%); }}
+    .lesson-header p {{ margin: 0 0 7px; color: var(--muted); font-size: 0.86rem; font-weight: 700; overflow-wrap: anywhere; }}
+    .lesson-header h2 {{ margin: 0; font-size: clamp(1.35rem, 2.2vw, 1.95rem); letter-spacing: 0; line-height: 1.2; }}
+    .lesson-body {{ padding: clamp(24px, 3vw, 40px); max-width: 920px; }}
     .lesson-body h2, .lesson-body h3, .lesson-body h4, .lesson-body h5 {{ margin: 1.3em 0 0.45em; letter-spacing: 0; line-height: 1.25; }}
     .lesson-body h2:first-child, .lesson-body h3:first-child {{ margin-top: 0; }}
+    .lesson-body p, .lesson-body li {{ font-size: 1.02rem; }}
+    .lesson-body p {{ margin: 0 0 1rem; }}
+    .lesson-body ul, .lesson-body ol {{ padding-left: 1.35rem; }}
+    .lesson-body li + li {{ margin-top: 0.34rem; }}
     .lesson-body a {{ color: var(--accent); font-weight: 700; }}
-    .lesson-body blockquote {{ margin: 16px 0; padding: 12px 14px; border-left: 4px solid var(--accent); background: var(--accent-soft); color: #243447; }}
-    .lesson-body pre {{ overflow: auto; padding: 14px; border-radius: 8px; background: #111827; color: #e5e7eb; }}
+    .lesson-body blockquote {{ margin: 18px 0; padding: 14px 16px; border-left: 4px solid var(--accent); background: var(--accent-soft); color: #243447; border-radius: 0 8px 8px 0; }}
+    .lesson-body pre {{ overflow: auto; padding: 16px; border-radius: 8px; background: #111827; color: #e5e7eb; }}
     .lesson-body code {{ padding: 0.08rem 0.25rem; border-radius: 4px; background: #eef2f7; }}
     .lesson-body pre code {{ padding: 0; background: transparent; }}
     @media (max-width: 980px) {{ .app-shell {{ grid-template-columns: 1fr; }} .sidebar {{ position: static; height: auto; }} .unit-nav {{ grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }} .topbar-row {{ display: grid; }} }}
@@ -706,56 +710,60 @@ def _ensure_course_page_for_session(session_dir: Path) -> dict[str, object]:
 
 
 def _build_agent_chat_html(chat_url: str) -> str:
+    adk_chat_url = f"{chat_url.rstrip('/')}/?app=tt"
     return """<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Chat with tt</title>
+  <title>ADK Chat with tt</title>
   <style>
     * {{ box-sizing: border-box; }}
     :root {{
       color-scheme: light;
-      --bg: #f3f5f8;
+      --bg: #f6f8fb;
       --panel: #ffffff;
-      --ink: #1f2937;
+      --ink: #182230;
       --muted: #667085;
-      --line: #d8dee8;
-      --nav: #243447;
-      --accent: #2563eb;
-      --accent-soft: #e8f0ff;
-      --good: #0f766e;
-      --bad: #b42318;
+      --line: #d9e1ec;
+      --nav: #152238;
+      --nav-muted: #b9c6d8;
+      --accent: #2f6fed;
+      --accent-soft: #eef4ff;
     }}
     body {{
       margin: 0;
       min-height: 100vh;
-      background: var(--bg);
+      background: linear-gradient(180deg, #ffffff 0, var(--bg) 300px), var(--bg);
       color: var(--ink);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      text-rendering: optimizeLegibility;
     }}
     .shell {{
       min-height: 100vh;
       display: grid;
-      grid-template-columns: 240px minmax(0, 1fr);
+      grid-template-columns: 256px minmax(0, 1fr);
     }}
     aside {{
       background: var(--nav);
       color: white;
-      padding: 24px 18px;
+      padding: 26px 18px;
+      border-right: 1px solid rgba(255,255,255,0.08);
     }}
     aside h1 {{
       margin: 0 0 24px;
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       letter-spacing: 0;
+      line-height: 1.2;
     }}
     aside a {{
       display: block;
-      padding: 10px 12px;
+      padding: 11px 12px;
       border-radius: 8px;
-      color: white;
+      color: #e5edf8;
       text-decoration: none;
       font-weight: 800;
+      font-size: 0.94rem;
     }}
     aside a:hover, aside a.active {{
       background: rgba(255,255,255,0.12);
@@ -764,125 +772,66 @@ def _build_agent_chat_html(chat_url: str) -> str:
       min-width: 0;
       min-height: 100vh;
       display: grid;
-      grid-template-rows: auto 1fr auto;
+      grid-template-rows: auto 1fr;
     }}
     .topbar {{
-      background: var(--panel);
+      background: rgba(255,255,255,0.94);
+      backdrop-filter: blur(10px);
       border-bottom: 1px solid var(--line);
-      padding: 22px clamp(18px, 4vw, 42px);
+      padding: 30px clamp(20px, 4vw, 52px);
     }}
     .topbar h2 {{
       margin: 0;
-      font-size: clamp(1.45rem, 3vw, 2.1rem);
+      font-size: clamp(1.8rem, 3vw, 2.65rem);
       letter-spacing: 0;
+      line-height: 1.08;
     }}
     .topbar p {{
-      margin: 6px 0 0;
+      margin: 9px 0 0;
       color: var(--muted);
+      max-width: 760px;
+      line-height: 1.55;
     }}
-    .chat-window {{
-      min-height: 0;
-      padding: 22px clamp(18px, 4vw, 42px);
-      overflow: auto;
-    }}
-    .messages {{
-      max-width: 920px;
-      display: grid;
-      gap: 12px;
-    }}
-    .message {{
-      width: min(760px, 100%);
-      padding: 14px 16px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--panel);
-      white-space: pre-wrap;
-      line-height: 1.5;
-    }}
-    .message.user {{
-      justify-self: end;
-      background: var(--accent);
-      color: white;
-      border-color: var(--accent);
-    }}
-    .message.agent {{
-      justify-self: start;
-    }}
-    .message.system {{
-      justify-self: start;
-      background: #fff8e6;
-      color: #594300;
-    }}
-    .composer {{
-      border-top: 1px solid var(--line);
-      background: var(--panel);
-      padding: 16px clamp(18px, 4vw, 42px);
-    }}
-    .quick-actions {{
-      max-width: 920px;
+    .actions {{
+      margin-top: 14px;
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-bottom: 10px;
     }}
-    .quick-actions button {{
-      min-height: 34px;
-      padding: 7px 10px;
+    .actions a {{
+      display: inline-flex;
+      align-items: center;
+      min-height: 38px;
+      padding: 8px 12px;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: white;
       color: var(--accent);
-      cursor: pointer;
+      text-decoration: none;
       font-weight: 800;
     }}
-    form {{
-      max-width: 920px;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 10px;
-      align-items: end;
-    }}
-    textarea {{
-      width: 100%;
-      min-height: 54px;
-      max-height: 180px;
-      resize: vertical;
-      padding: 12px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      color: var(--ink);
-      font: inherit;
-      line-height: 1.45;
-    }}
-    button[type="submit"] {{
-      min-height: 54px;
-      padding: 0 18px;
-      border: 1px solid var(--accent);
-      border-radius: 8px;
+    .actions a.primary {{
+      border-color: var(--accent);
       background: var(--accent);
       color: white;
-      font-weight: 900;
-      cursor: pointer;
     }}
-    button:disabled {{
-      opacity: 0.55;
-      cursor: not-allowed;
+    .frame-wrap {{
+      min-height: 0;
+      padding: 30px clamp(20px, 4vw, 52px) 54px;
     }}
-    .status {{
-      max-width: 920px;
-      min-height: 24px;
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 0.92rem;
+    iframe {{
+      width: 100%;
+      height: calc(100vh - 176px);
+      min-height: 620px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
     }}
-    .status.error {{ color: var(--bad); }}
-    .status.ready {{ color: var(--good); }}
     @media (max-width: 760px) {{
       .shell {{ grid-template-columns: 1fr; }}
       aside {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; }}
       aside h1 {{ margin: 0; }}
-      form {{ grid-template-columns: 1fr; }}
-      button[type="submit"] {{ width: 100%; }}
+      iframe {{ height: calc(100vh - 230px); min-height: 520px; }}
     }}
   </style>
 </head>
@@ -897,170 +846,23 @@ def _build_agent_chat_html(chat_url: str) -> str:
     </aside>
     <main>
       <header class="topbar">
-        <h2>Chat with tt</h2>
-        <p>Create a new course, generate quizzes, refresh the dashboard, or revise saved lessons.</p>
+        <h2>ADK Web: tt</h2>
+        <p>This page opens the ADK web interface for the agent app named <strong>tt</strong>.</p>
+        <div class="actions">
+          <a class="primary" href="{adk_chat_url}" target="_blank" rel="noopener noreferrer">Open ADK Web</a>
+          <a href="index.html">Back to Dashboard</a>
+        </div>
       </header>
-      <section class="chat-window" id="chatWindow" aria-label="Conversation">
-        <div class="messages" id="messages">
-          <div class="message agent">Hi, I am tt. Tell me what course or project you want to build, and I will interview you briefly before generating the curriculum.</div>
-        </div>
-      </section>
-      <section class="composer" aria-label="Message composer">
-        <div class="quick-actions">
-          <button type="button" data-prompt="I want to create a new project-based course.">New project course</button>
-          <button type="button" data-prompt="I want to create a theoretical lesson course.">New theoretical course</button>
-          <button type="button" data-prompt="Refresh the dashboard and hook all course pages.">Refresh dashboard</button>
-        </div>
-        <form id="chatForm">
-          <textarea id="messageInput" placeholder="Message tt..." autocomplete="off"></textarea>
-          <button id="sendButton" type="submit">Send</button>
-        </form>
-        <div id="status" class="status">Connecting to tt at {chat_url}</div>
+      <section class="frame-wrap" aria-label="ADK web chat">
+        <iframe src="{adk_chat_url}" title="ADK web chat for tt"></iframe>
       </section>
     </main>
   </div>
-  <script>
-    const ADK_BASE_URL = "{chat_url}";
-    const APP_NAME = "tt";
-    const USER_ID = "dashboard-user";
-    const sessionKey = "tt-dashboard-chat-session";
-    const messages = document.getElementById("messages");
-    const chatWindow = document.getElementById("chatWindow");
-    const form = document.getElementById("chatForm");
-    const input = document.getElementById("messageInput");
-    const sendButton = document.getElementById("sendButton");
-    const statusEl = document.getElementById("status");
-
-    let sessionId = localStorage.getItem(sessionKey) || crypto.randomUUID();
-    localStorage.setItem(sessionKey, sessionId);
-
-    function setStatus(text, kind = "") {{
-      statusEl.textContent = text;
-      statusEl.className = "status " + kind;
-    }}
-
-    function addMessage(text, role) {{
-      const bubble = document.createElement("div");
-      bubble.className = "message " + role;
-      bubble.textContent = text;
-      messages.appendChild(bubble);
-      chatWindow.scrollTop = chatWindow.scrollHeight;
-      return bubble;
-    }}
-
-    async function ensureSession() {{
-      const url = `${{ADK_BASE_URL}}/apps/${{APP_NAME}}/users/${{USER_ID}}/sessions/${{sessionId}}`;
-      const response = await fetch(url, {{
-        method: "POST",
-        headers: {{ "Content-Type": "application/json" }},
-        body: JSON.stringify({{ state: {{ source: "course-dashboard" }} }})
-      }});
-      if (!response.ok && response.status !== 409) {{
-        throw new Error(`Could not create tt session (${{response.status}}).`);
-      }}
-      setStatus("Connected to tt", "ready");
-    }}
-
-    function extractText(event) {{
-      if (!event || !event.content || event.content.role === "user") return "";
-      const parts = event.content.parts || [];
-      return parts.map((part) => part.text || "").filter(Boolean).join("\\n");
-    }}
-
-    async function sendMessage(text) {{
-      addMessage(text, "user");
-      input.value = "";
-      sendButton.disabled = true;
-      setStatus("tt is working...");
-      const agentBubble = addMessage("", "agent");
-
-      try {{
-        await ensureSession();
-        const response = await fetch(`${{ADK_BASE_URL}}/run_sse`, {{
-          method: "POST",
-          headers: {{ "Content-Type": "application/json" }},
-          body: JSON.stringify({{
-            appName: APP_NAME,
-            userId: USER_ID,
-            sessionId,
-            streaming: false,
-            newMessage: {{
-              role: "user",
-              parts: [{{ text }}]
-            }}
-          }})
-        }});
-        if (!response.ok || !response.body) {{
-          throw new Error(`ADK request failed (${{response.status}}).`);
-        }}
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let collected = "";
-
-        while (true) {{
-          const {{ value, done }} = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, {{ stream: true }});
-          const chunks = buffer.split("\\n\\n");
-          buffer = chunks.pop() || "";
-          for (const chunk of chunks) {{
-            const line = chunk.split("\\n").find((item) => item.startsWith("data: "));
-            if (!line) continue;
-            const payload = line.slice(6);
-            const event = JSON.parse(payload);
-            if (event.error) throw new Error(event.error);
-            const textPart = extractText(event);
-            if (textPart) {{
-              collected += (collected ? "\\n" : "") + textPart;
-              agentBubble.textContent = collected;
-              chatWindow.scrollTop = chatWindow.scrollHeight;
-            }}
-          }}
-        }}
-
-        if (!agentBubble.textContent.trim()) {{
-          agentBubble.textContent = "Done. Check the dashboard for generated course files or linked pages.";
-        }}
-        setStatus("Connected to tt", "ready");
-      }} catch (error) {{
-        agentBubble.textContent = "I could not reach tt from this page. Make sure ADK is running at " + ADK_BASE_URL + " and that browser access is allowed.";
-        setStatus(error.message, "error");
-      }} finally {{
-        sendButton.disabled = false;
-        input.focus();
-      }}
-    }}
-
-    form.addEventListener("submit", (event) => {{
-      event.preventDefault();
-      const text = input.value.trim();
-      if (text) sendMessage(text);
-    }});
-
-    input.addEventListener("keydown", (event) => {{
-      if (event.key === "Enter" && !event.shiftKey) {{
-        event.preventDefault();
-        form.requestSubmit();
-      }}
-    }});
-
-    document.querySelectorAll("[data-prompt]").forEach((button) => {{
-      button.addEventListener("click", () => {{
-        input.value = button.dataset.prompt;
-        input.focus();
-      }});
-    }});
-
-    ensureSession().catch((error) => {{
-      setStatus(error.message, "error");
-      addMessage("Start ADK with `adk web` and keep it running before chatting with tt.", "system");
-    }});
-  </script>
 </body>
 </html>
-""".format(chat_url=escape(chat_url, quote=True))
+""".format(
+        adk_chat_url=escape(adk_chat_url, quote=True),
+    )
 
 
 def _build_dashboard_html(courses: list[dict[str, object]], chat_url: str) -> str:
@@ -1116,46 +918,48 @@ def _build_dashboard_html(courses: list[dict[str, object]], chat_url: str) -> st
   <style>
     :root {{
       color-scheme: light;
-      --bg: #f3f5f8;
+      --bg: #f6f8fb;
       --panel: #ffffff;
-      --ink: #1f2937;
+      --ink: #182230;
       --muted: #667085;
-      --line: #d8dee8;
-      --nav: #243447;
-      --accent: #2563eb;
-      --accent-soft: #e8f0ff;
+      --line: #d9e1ec;
+      --nav: #152238;
+      --nav-muted: #b9c6d8;
+      --accent: #2f6fed;
+      --accent-soft: #eef4ff;
       --green: #0f766e;
+      --shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
     }}
     * {{ box-sizing: border-box; }}
-    body {{ margin: 0; background: var(--bg); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }}
-    .shell {{ min-height: 100vh; display: grid; grid-template-columns: 240px minmax(0, 1fr); }}
-    aside {{ background: var(--nav); color: white; padding: 24px 18px; }}
-    aside h1 {{ margin: 0 0 24px; font-size: 1.1rem; letter-spacing: 0; }}
-    aside a {{ display: block; padding: 10px 12px; border-radius: 8px; color: white; text-decoration: none; }}
+    body {{ margin: 0; background: linear-gradient(180deg, #ffffff 0, var(--bg) 300px), var(--bg); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-rendering: optimizeLegibility; }}
+    .shell {{ min-height: 100vh; display: grid; grid-template-columns: 256px minmax(0, 1fr); }}
+    aside {{ background: var(--nav); color: white; padding: 26px 18px; border-right: 1px solid rgba(255,255,255,0.08); }}
+    aside h1 {{ margin: 0 0 24px; font-size: 1.05rem; letter-spacing: 0; line-height: 1.2; }}
+    aside a {{ display: block; padding: 11px 12px; border-radius: 8px; color: #e5edf8; text-decoration: none; font-weight: 800; font-size: 0.94rem; }}
     aside a.active, aside a:hover {{ background: rgba(255,255,255,0.12); }}
     main {{ min-width: 0; }}
-    .topbar {{ background: var(--panel); border-bottom: 1px solid var(--line); padding: 24px clamp(18px, 4vw, 42px); }}
-    .topbar h2 {{ margin: 0; font-size: clamp(1.55rem, 3vw, 2.25rem); letter-spacing: 0; }}
-    .topbar p {{ margin: 6px 0 0; color: var(--muted); }}
-    .dashboard-content {{ display: grid; gap: 28px; padding: 24px clamp(18px, 4vw, 42px) 42px; }}
-    .course-section {{ display: grid; gap: 14px; }}
+    .topbar {{ background: rgba(255,255,255,0.94); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); padding: 30px clamp(20px, 4vw, 52px); }}
+    .topbar h2 {{ margin: 0; font-size: clamp(1.8rem, 3vw, 2.65rem); letter-spacing: 0; line-height: 1.08; }}
+    .topbar p {{ margin: 9px 0 0; color: var(--muted); max-width: 760px; line-height: 1.55; }}
+    .dashboard-content {{ display: grid; gap: 34px; padding: 30px clamp(20px, 4vw, 52px) 54px; }}
+    .course-section {{ display: grid; gap: 16px; }}
     .section-heading {{ display: flex; align-items: end; justify-content: space-between; gap: 12px; }}
-    .section-heading h3 {{ margin: 0; font-size: 1.18rem; letter-spacing: 0; }}
-    .section-heading p {{ margin: 4px 0 0; color: var(--muted); }}
-    .section-count {{ color: var(--muted); font-weight: 800; }}
-    .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; }}
-    .course-card, .add-card {{ min-height: 190px; display: flex; flex-direction: column; justify-content: space-between; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); text-decoration: none; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04); }}
-    .course-card:hover, .add-card:hover {{ border-color: var(--accent); box-shadow: 0 10px 24px rgba(16, 24, 40, 0.08); }}
-    .course-card h2, .add-card h2 {{ margin: 14px 0 8px; font-size: 1.12rem; letter-spacing: 0; overflow-wrap: anywhere; }}
-    .course-card p, .add-card p {{ margin: 0; color: var(--muted); }}
-    .course-card small {{ color: var(--muted); }}
-    .course-status {{ align-self: flex-start; padding: 4px 8px; border-radius: 999px; background: #ecfdf3; color: var(--green); font-size: 0.78rem; font-weight: 800; }}
-    .add-card {{ border-style: dashed; background: var(--accent-soft); }}
-    .empty-section {{ min-height: 150px; padding: 18px; border: 1px dashed var(--line); border-radius: 8px; background: #ffffff; color: var(--muted); }}
+    .section-heading h3 {{ margin: 0; font-size: 1.22rem; letter-spacing: 0; line-height: 1.2; }}
+    .section-heading p {{ margin: 5px 0 0; color: var(--muted); line-height: 1.45; }}
+    .section-count {{ color: var(--muted); font-weight: 800; font-size: 0.9rem; white-space: nowrap; }}
+    .grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 18px; }}
+    .course-card, .add-card {{ min-height: 188px; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); text-decoration: none; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease; }}
+    .course-card:hover, .add-card:hover {{ transform: translateY(-2px); border-color: rgba(47, 111, 237, 0.45); box-shadow: var(--shadow); }}
+    .course-card h2, .add-card h2 {{ margin: 16px 0 8px; font-size: 1.12rem; letter-spacing: 0; line-height: 1.25; overflow-wrap: anywhere; }}
+    .course-card p, .add-card p {{ margin: 0; color: var(--muted); line-height: 1.45; }}
+    .course-card small {{ color: var(--muted); font-weight: 700; }}
+    .course-status {{ align-self: flex-start; padding: 5px 9px; border-radius: 999px; background: #ecfdf3; color: var(--green); font-size: 0.76rem; font-weight: 900; }}
+    .add-card {{ border-style: dashed; background: linear-gradient(180deg, #f7faff 0, var(--accent-soft) 100%); }}
+    .empty-section {{ min-height: 150px; padding: 20px; border: 1px dashed var(--line); border-radius: 8px; background: rgba(255,255,255,0.72); color: var(--muted); }}
     .empty-section h3 {{ margin: 0 0 6px; color: var(--ink); font-size: 1rem; letter-spacing: 0; }}
     .empty-section p {{ margin: 0; }}
-    .plus {{ width: 44px; height: 44px; display: grid; place-items: center; border-radius: 8px; background: var(--accent); color: white; font-size: 1.8rem; line-height: 1; }}
-    @media (max-width: 760px) {{ .shell {{ grid-template-columns: 1fr; }} aside {{ display: flex; gap: 8px; align-items: center; justify-content: space-between; }} aside h1 {{ margin: 0; }} }}
+    .plus {{ width: 46px; height: 46px; display: grid; place-items: center; border-radius: 8px; background: var(--accent); color: white; font-size: 1.8rem; line-height: 1; box-shadow: 0 10px 22px rgba(47, 111, 237, 0.24); }}
+    @media (max-width: 760px) {{ .shell {{ grid-template-columns: 1fr; }} aside {{ display: flex; gap: 8px; align-items: center; justify-content: space-between; }} aside h1 {{ margin: 0; }} .section-heading {{ align-items: flex-start; flex-direction: column; }} .grid {{ grid-template-columns: 1fr; }} }}
   </style>
 </head>
 <body>

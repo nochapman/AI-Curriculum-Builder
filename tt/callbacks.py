@@ -321,89 +321,155 @@ def _build_quiz_html(bundle: QuizBundle) -> str:
   <style>
     :root {{
       color-scheme: light;
-      --bg: #f7f8fa;
+      --bg: #f6f8fb;
       --panel: #ffffff;
-      --ink: #1d2430;
+      --ink: #182230;
       --muted: #667085;
-      --line: #d9dee7;
-      --accent: #2457c5;
-      --accent-soft: #e8eefc;
-      --good: #137a45;
+      --line: #d9e1ec;
+      --nav: #152238;
+      --nav-muted: #b9c6d8;
+      --accent: #2f6fed;
+      --accent-soft: #eef4ff;
+      --good: #0f766e;
       --bad: #b42318;
+      --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
     }}
     * {{ box-sizing: border-box; }}
     body {{
       margin: 0;
-      background: var(--bg);
+      background: linear-gradient(180deg, #ffffff 0, var(--bg) 300px), var(--bg);
       color: var(--ink);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.5;
+      line-height: 1.65;
+      text-rendering: optimizeLegibility;
     }}
-    header {{
-      padding: 28px clamp(18px, 4vw, 44px) 18px;
+    .app-shell {{
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 256px minmax(0, 1fr);
+    }}
+    .sidebar {{
+      background: var(--nav);
+      color: white;
+      padding: 26px 18px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      border-right: 1px solid rgba(255,255,255,0.08);
+    }}
+    .brand {{
+      margin: 0 0 20px;
+      font-size: 0.76rem;
+      color: var(--nav-muted);
+      text-transform: uppercase;
+      letter-spacing: 0;
+      font-weight: 800;
+    }}
+    .sidebar-link {{
+      display: block;
+      margin-bottom: 10px;
+      padding: 11px 12px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 8px;
+      color: white;
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 0.92rem;
+      background: rgba(255,255,255,0.04);
+    }}
+    .sidebar-link:hover {{
+      background: rgba(255,255,255,0.12);
+    }}
+    .unit-nav {{
+      display: grid;
+      gap: 7px;
+      margin-top: 18px;
+    }}
+    .main {{
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }}
+    .topbar {{
+      background: rgba(255,255,255,0.94);
+      backdrop-filter: blur(10px);
       border-bottom: 1px solid var(--line);
-      background: var(--panel);
+      padding: 30px clamp(20px, 4vw, 52px);
     }}
-    header p {{ color: var(--muted); margin: 6px 0 0; }}
+    .topbar p {{
+      color: var(--muted);
+      margin: 9px 0 0;
+      max-width: 760px;
+      line-height: 1.55;
+    }}
     .top-actions {{
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin-top: 14px;
+      margin-top: 16px;
     }}
     .top-actions a {{
-      padding: 8px 12px;
+      padding: 9px 13px;
       border: 1px solid var(--line);
       border-radius: 8px;
       color: var(--accent);
       text-decoration: none;
       font-weight: 800;
       background: white;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     }}
     .top-actions a:hover {{ background: var(--accent-soft); }}
-    h1 {{ margin: 0; font-size: clamp(1.6rem, 3vw, 2.35rem); letter-spacing: 0; }}
-    main {{
-      display: grid;
-      grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
-      gap: 22px;
-      padding: 22px clamp(18px, 4vw, 44px) 44px;
+    h1 {{
+      margin: 0;
+      font-size: clamp(1.8rem, 3vw, 2.65rem);
+      letter-spacing: 0;
+      line-height: 1.08;
     }}
-    nav {{
-      align-self: start;
-      position: sticky;
-      top: 18px;
-      display: grid;
-      gap: 8px;
+    .quiz-content {{
+      padding: 30px clamp(20px, 4vw, 52px) 54px;
     }}
     .unit-tab {{
       width: 100%;
-      min-height: 42px;
-      padding: 10px 12px;
-      border: 1px solid var(--line);
+      min-height: 46px;
+      display: grid;
+      align-items: center;
+      padding: 10px 11px;
+      border: 1px solid transparent;
       border-radius: 8px;
-      background: var(--panel);
-      color: var(--ink);
+      background: transparent;
+      color: #e5edf8;
       text-align: left;
       cursor: pointer;
+      font: inherit;
+      font-size: 0.92rem;
+      overflow-wrap: anywhere;
+    }}
+    .unit-tab:hover {{
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.12);
     }}
     .unit-tab.active {{
-      border-color: var(--accent);
-      background: var(--accent-soft);
-      color: var(--accent);
+      border-color: white;
+      background: white;
+      color: var(--nav);
       font-weight: 700;
     }}
     .unit-panel {{
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: clamp(16px, 3vw, 28px);
+      padding: clamp(22px, 3vw, 36px);
+      box-shadow: var(--shadow);
     }}
     .unit-heading p {{
-      margin: 0 0 4px;
+      margin: 0 0 7px;
       color: var(--muted);
-      font-size: 0.9rem;
+      font-size: 0.86rem;
+      font-weight: 700;
+      overflow-wrap: anywhere;
     }}
-    h2 {{ margin: 0 0 20px; font-size: 1.45rem; letter-spacing: 0; }}
+    h2 {{ margin: 0 0 20px; font-size: clamp(1.35rem, 2.2vw, 1.95rem); letter-spacing: 0; line-height: 1.2; }}
     .question {{
       padding: 18px 0;
       border-top: 1px solid var(--line);
@@ -414,12 +480,13 @@ def _build_quiz_html(bundle: QuizBundle) -> str:
       display: flex;
       gap: 10px;
       align-items: flex-start;
-      padding: 10px 12px;
+      padding: 11px 12px;
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: #fbfcfe;
+      background: #fbfdff;
       cursor: pointer;
     }}
+    .option:hover {{ border-color: rgba(47, 111, 237, 0.45); background: var(--accent-soft); }}
     .option input {{ margin-top: 4px; }}
     .feedback {{ min-height: 24px; margin: 10px 0 0; color: var(--muted); }}
     .question.correct .feedback {{ color: var(--good); }}
@@ -444,24 +511,37 @@ def _build_quiz_html(bundle: QuizBundle) -> str:
     .reset-button {{ background: white; color: var(--accent); }}
     .score {{ color: var(--muted); font-weight: 700; }}
     @media (max-width: 760px) {{
-      main {{ grid-template-columns: 1fr; }}
-      nav {{ position: static; }}
+      .app-shell {{ grid-template-columns: 1fr; }}
+      .sidebar {{
+        position: static;
+        height: auto;
+      }}
+      .unit-nav {{
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      }}
     }}
   </style>
 </head>
 <body>
-  <header>
-    <h1>{title}</h1>
-    <p>Choose a unit, answer the questions, and check your score.</p>
-    <div class="top-actions">
-      <a href="course_page.html">Course page</a>
-      <a href="../index.html">Dashboard</a>
-    </div>
-  </header>
-  <main>
-    <nav aria-label="Quiz units">{nav}</nav>
-    <div>{sections}</div>
-  </main>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <p class="brand">Quiz Navigation</p>
+      <a class="sidebar-link" href="../index.html">Dashboard</a>
+      <a class="sidebar-link" href="course_page.html">Course page</a>
+      <nav class="unit-nav" aria-label="Quiz units">{nav}</nav>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <h1>{title}</h1>
+        <p>Choose a unit, answer the questions, and check your score.</p>
+        <div class="top-actions">
+          <a href="course_page.html">Course page</a>
+          <a href="../index.html">Dashboard</a>
+        </div>
+      </header>
+      <div class="quiz-content">{sections}</div>
+    </main>
+  </div>
   <script>
     const tabs = document.querySelectorAll(".unit-tab");
     const panels = document.querySelectorAll(".unit-panel");
@@ -680,94 +760,99 @@ def _build_course_page_html(bundle: CoursePageBundle) -> str:
   <style>
     :root {{
       color-scheme: light;
-      --page: #f5f7fb;
+      --page: #f6f8fb;
       --panel: #ffffff;
-      --ink: #1f2937;
+      --ink: #182230;
       --muted: #64748b;
-      --line: #d7dee9;
-      --nav: #243447;
-      --nav-muted: #cbd5e1;
-      --accent: #2563eb;
-      --accent-soft: #e8f0ff;
+      --line: #d9e1ec;
+      --nav: #152238;
+      --nav-muted: #b9c6d8;
+      --accent: #2f6fed;
+      --accent-soft: #eef4ff;
       --success: #0f766e;
+      --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
     }}
     * {{ box-sizing: border-box; }}
     body {{
       margin: 0;
-      background: var(--page);
+      background:
+        linear-gradient(180deg, #ffffff 0, var(--page) 280px),
+        var(--page);
       color: var(--ink);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.55;
+      line-height: 1.65;
+      text-rendering: optimizeLegibility;
     }}
     .app-shell {{
       min-height: 100vh;
       display: grid;
-      grid-template-columns: 260px minmax(0, 1fr);
+      grid-template-columns: 256px minmax(0, 1fr);
     }}
     .sidebar {{
       background: var(--nav);
       color: white;
-      padding: 22px 16px;
+      padding: 24px 18px;
       position: sticky;
       top: 0;
       height: 100vh;
       overflow: auto;
+      border-right: 1px solid rgba(255,255,255,0.08);
     }}
     .brand {{
-      margin: 0 0 18px;
-      font-size: 0.9rem;
+      margin: 0 0 20px;
+      font-size: 0.76rem;
       color: var(--nav-muted);
       text-transform: uppercase;
       letter-spacing: 0;
-      font-weight: 700;
-    }}
-    .dashboard-link {{
-      display: block;
-      margin-bottom: 16px;
-      padding: 10px 12px;
-      border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 8px;
-      color: white;
-      text-decoration: none;
       font-weight: 800;
     }}
-    .dashboard-link:hover {{
-      background: rgba(255,255,255,0.12);
-    }}
+    .dashboard-link,
     .quiz-link {{
       display: block;
-      margin-bottom: 16px;
-      padding: 10px 12px;
+      margin-bottom: 10px;
+      padding: 11px 12px;
       border: 1px solid rgba(255,255,255,0.18);
       border-radius: 8px;
       color: white;
       text-decoration: none;
       font-weight: 800;
+      font-size: 0.92rem;
+      background: rgba(255,255,255,0.04);
     }}
+    .dashboard-link:hover,
     .quiz-link:hover {{
       background: rgba(255,255,255,0.12);
     }}
+    .quiz-link {{
+      margin-bottom: 18px;
+    }}
     .unit-nav {{
       display: grid;
-      gap: 8px;
+      gap: 7px;
     }}
     .unit-link {{
       width: 100%;
-      min-height: 44px;
+      min-height: 46px;
       display: grid;
-      grid-template-columns: 38px minmax(0, 1fr);
-      gap: 8px;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 10px;
       align-items: center;
-      padding: 9px 10px;
-      border: 1px solid rgba(255,255,255,0.14);
+      padding: 10px 11px;
+      border: 1px solid transparent;
       border-radius: 8px;
       background: transparent;
-      color: white;
+      color: #e5edf8;
       text-align: left;
       cursor: pointer;
+      font: inherit;
+      font-size: 0.92rem;
     }}
     .unit-link span:last-child {{
       overflow-wrap: anywhere;
+    }}
+    .unit-link:hover {{
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.12);
     }}
     .unit-link.active {{
       background: white;
@@ -786,79 +871,81 @@ def _build_course_page_html(bundle: CoursePageBundle) -> str:
       grid-template-rows: auto 1fr;
     }}
     .topbar {{
-      background: var(--panel);
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(10px);
       border-bottom: 1px solid var(--line);
-      padding: 18px clamp(18px, 4vw, 38px);
+      padding: 24px clamp(20px, 4vw, 48px);
     }}
     .topbar-row {{
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 16px;
+      gap: 20px;
     }}
-    .topbar-dashboard-link {{
-      flex: 0 0 auto;
-      padding: 8px 12px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      color: var(--accent);
-      text-decoration: none;
-      font-weight: 800;
-      background: white;
+    .topbar-row > div:last-child {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
     }}
-    .topbar-dashboard-link:hover {{
-      background: var(--accent-soft);
-    }}
+    .topbar-dashboard-link,
     .topbar-quiz-link {{
       flex: 0 0 auto;
-      padding: 8px 12px;
+      padding: 9px 13px;
       border: 1px solid var(--line);
       border-radius: 8px;
       color: var(--accent);
       text-decoration: none;
       font-weight: 800;
       background: white;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     }}
+    .topbar-dashboard-link:hover,
     .topbar-quiz-link:hover {{
       background: var(--accent-soft);
     }}
     .topbar p {{
-      margin: 6px 0 0;
+      margin: 8px 0 0;
       color: var(--muted);
       max-width: 860px;
     }}
     h1 {{
       margin: 0;
-      font-size: clamp(1.45rem, 3vw, 2.2rem);
+      font-size: clamp(1.65rem, 3vw, 2.45rem);
       letter-spacing: 0;
+      line-height: 1.15;
     }}
     .content-grid {{
-      padding: 22px clamp(18px, 4vw, 38px) 42px;
+      padding: 28px clamp(20px, 4vw, 48px) 54px;
     }}
     .lesson-panel {{
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: 8px;
       overflow: hidden;
+      box-shadow: var(--shadow);
     }}
     .lesson-header {{
-      padding: clamp(18px, 3vw, 30px);
+      padding: clamp(22px, 3vw, 36px);
       border-bottom: 1px solid var(--line);
-      background: #fbfcff;
+      background: linear-gradient(180deg, #fbfdff 0, #f7faff 100%);
     }}
     .lesson-header p {{
-      margin: 0 0 5px;
+      margin: 0 0 7px;
       color: var(--muted);
-      font-size: 0.92rem;
+      font-size: 0.86rem;
+      font-weight: 700;
+      overflow-wrap: anywhere;
     }}
     .lesson-header h2 {{
       margin: 0;
-      font-size: clamp(1.25rem, 2.2vw, 1.75rem);
+      font-size: clamp(1.35rem, 2.2vw, 1.95rem);
       letter-spacing: 0;
+      line-height: 1.2;
     }}
     .lesson-body {{
-      padding: clamp(18px, 3vw, 30px);
-      max-width: 880px;
+      padding: clamp(24px, 3vw, 40px);
+      max-width: 920px;
     }}
     .lesson-body h2, .lesson-body h3, .lesson-body h4, .lesson-body h5 {{
       margin: 1.3em 0 0.45em;
@@ -869,22 +956,32 @@ def _build_course_page_html(bundle: CoursePageBundle) -> str:
       margin-top: 0;
     }}
     .lesson-body p, .lesson-body li {{
-      font-size: 1rem;
+      font-size: 1.02rem;
+    }}
+    .lesson-body p {{
+      margin: 0 0 1rem;
+    }}
+    .lesson-body ul, .lesson-body ol {{
+      padding-left: 1.35rem;
+    }}
+    .lesson-body li + li {{
+      margin-top: 0.34rem;
     }}
     .lesson-body a {{
       color: var(--accent);
       font-weight: 700;
     }}
     .lesson-body blockquote {{
-      margin: 16px 0;
-      padding: 12px 14px;
+      margin: 18px 0;
+      padding: 14px 16px;
       border-left: 4px solid var(--accent);
       background: var(--accent-soft);
       color: #243447;
+      border-radius: 0 8px 8px 0;
     }}
     .lesson-body pre {{
       overflow: auto;
-      padding: 14px;
+      padding: 16px;
       border-radius: 8px;
       background: #111827;
       color: #e5e7eb;
