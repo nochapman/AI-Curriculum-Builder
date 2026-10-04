@@ -37,7 +37,7 @@ from .tools import (
     store_learner_profile,
 )
 
-MODEL = os.getenv("CURRICULUM_MODEL", os.getenv("MODEL", "gemini-2.5-flash"))
+MODEL = os.getenv("CURRICULUM_MODEL", os.getenv("MODEL", "gemini-2.5-pro"))
 RETRY_INITIAL_DELAY_SECS = int(os.getenv("CURRICULUM_RETRY_INITIAL_DELAY_SECS", "1"))
 RETRY_ATTEMPTS = int(os.getenv("CURRICULUM_RETRY_ATTEMPTS", "3"))
 
